@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #050a18;
+  --foreground: #f8fafc;
+  --surface: #0a1628;
+  --panel: #0d1b2a;
+  --border: rgba(255,255,255,0.06);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  @apply antialiased selection:bg-blue-500/30;
+}
+
+/* ═══════════════════════════════════════════════
+   PANEL SYSTEM
+   ═══════════════════════════════════════════════ */
+.glass-panel {
+  @apply bg-[#0d1b2a] border border-white/[0.06] rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300;
+}
+
+.glass-panel:hover {
+  @apply border-white/[0.1] shadow-[0_0_30px_rgba(59,130,246,0.04)];
+}
+
+/* ═══════════════════════════════════════════════
+   INPUTS
+   ═══════════════════════════════════════════════ */
+.glass-input {
+  @apply w-full p-3 bg-[#0a1628] border border-white/[0.08] focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/40 outline-none transition-all duration-200 rounded-xl text-slate-100 placeholder:text-slate-600;
+}
+
+.glass-input:focus {
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 15px rgba(59, 130, 246, 0.12);
+}
+
+/* ═══════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════ */
+.glass-button {
+  @apply bg-[#0d1b2a] hover:bg-[#162338] border border-white/[0.08] shadow-sm transition-all duration-200 text-slate-300 font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 active:scale-[0.97];
+}
+
+.glass-button-primary {
+  @apply bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 shadow-[0_0_15px_rgba(37,99,235,0.12)] transition-all duration-200 text-blue-400 font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 active:scale-[0.97];
+}
+
+.glass-table-row {
+  @apply border-b border-white/[0.04] hover:bg-[#111d30] transition-colors;
+}
+
+/* ═══════════════════════════════════════════════
+   KPI CARD GRADIENTS
+   ═══════════════════════════════════════════════ */
+.kpi-gradient-blue {
+  background: linear-gradient(135deg, #0c2d6b 0%, #0a1f4a 50%, #0d1b2a 100%);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+.kpi-gradient-purple {
+  background: linear-gradient(135deg, #2d1b69 0%, #1a1040 50%, #0d1b2a 100%);
+  border-color: rgba(168, 85, 247, 0.2);
+}
+.kpi-gradient-green {
+  background: linear-gradient(135deg, #0a3d2e 0%, #0a2920 50%, #0d1b2a 100%);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+.kpi-gradient-teal {
+  background: linear-gradient(135deg, #0a3d3d 0%, #0a2929 50%, #0d1b2a 100%);
+  border-color: rgba(20, 184, 166, 0.2);
+}
+.kpi-gradient-orange {
+  background: linear-gradient(135deg, #3d2a0a 0%, #2a1d08 50%, #0d1b2a 100%);
+  border-color: rgba(249, 115, 22, 0.2);
+}
+
+/* ═══════════════════════════════════════════════
+   BLOCK UTILIZATION GRID
+   ═══════════════════════════════════════════════ */
+.block-cell {
+  @apply w-9 h-9 rounded-lg text-[11px] font-bold flex items-center justify-center cursor-pointer transition-all duration-200;
+}
+.block-cell-empty {
+  @apply bg-slate-800/50 text-slate-500 hover:bg-slate-700/50;
+}
+.block-cell-low {
+  @apply bg-emerald-900/40 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-800/40;
+}
+.block-cell-medium {
+  @apply bg-amber-900/30 text-amber-400 border border-amber-500/20 hover:bg-amber-800/30;
+}
+.block-cell-high {
+  @apply bg-red-900/30 text-red-400 border border-red-500/20 hover:bg-red-800/30;
+}
+.block-cell-active {
+  @apply ring-2 ring-blue-500 ring-offset-1 ring-offset-[#0d1b2a];
+}
+
+/* ═══════════════════════════════════════════════
+   FILTER BADGE TAGS
+   ═══════════════════════════════════════════════ */
+.filter-badge {
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all;
+}
+.filter-badge-active {
+  @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/30;
+}
+
+/* ═══════════════════════════════════════════════
+   ACTIVITY DOT
+   ═══════════════════════════════════════════════ */
+.activity-dot {
+  @apply w-2.5 h-2.5 rounded-full shrink-0 mt-1;
+}
+
+/* ═══════════════════════════════════════════════
+   POSITION DOT (colored dots in table)
+   ═══════════════════════════════════════════════ */
+.position-dot {
+  @apply w-2 h-2 rounded-full inline-block mr-1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   SCROLLBARS
+   ═══════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-800 rounded-full hover:bg-slate-700 transition-colors;
+}
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR NAV
+   ═══════════════════════════════════════════════ */
+.nav-category {
+  @apply text-[10px] font-bold text-slate-500/70 uppercase tracking-[0.15em] mb-2 mt-5 px-3 first:mt-0;
+}
+
+.nav-item {
+  @apply flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 font-medium text-[13px] text-slate-400 hover:bg-white/[0.04] hover:text-slate-200 border border-transparent cursor-pointer;
+}
+
+.nav-item-active {
+  @apply bg-blue-600/10 text-blue-400 border-blue-500/20 shadow-[inset_3px_0_0_rgba(59,130,246,0.9)];
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE TRANSITIONS
+   ═══════════════════════════════════════════════ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
