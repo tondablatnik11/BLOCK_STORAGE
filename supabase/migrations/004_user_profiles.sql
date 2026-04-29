@@ -62,19 +62,32 @@ DECLARE
   next_num INTEGER;
   new_uih TEXT;
   user_name TEXT;
+  custom_uih TEXT;
+  is_first BOOLEAN;
 BEGIN
-  -- Bezpečné generování UIH
-  SELECT COALESCE(MAX(
-    CASE 
-      WHEN uih ~ '^UIH[0-9]+$' 
-      THEN CAST(SUBSTRING(uih FROM 4) AS INTEGER) 
-      ELSE 0 
-    END
-  ), 0) + 1
-  INTO next_num
-  FROM public.user_profiles;
+  -- Zkontrolovat, jestli uživatel zadal vlastní UIH (z SAPu)
+  custom_uih := NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data ->> 'custom_uih', '')), '');
   
-  new_uih := 'UIH' || LPAD(next_num::TEXT, 3, '0');
+  IF custom_uih IS NOT NULL THEN
+    -- Použít UIH zadané uživatelem
+    new_uih := UPPER(custom_uih);
+  ELSE
+    -- Auto-generování UIH jako fallback
+    SELECT COALESCE(MAX(
+      CASE 
+        WHEN uih ~ '^UIH[0-9]+$' 
+        THEN CAST(SUBSTRING(uih FROM 4) AS INTEGER) 
+        ELSE 0 
+      END
+    ), 0) + 1
+    INTO next_num
+    FROM public.user_profiles;
+    
+    new_uih := 'UIH' || LPAD(next_num::TEXT, 3, '0');
+  END IF;
+  
+  -- Zjistit zda je to první uživatel (= admin)
+  SELECT NOT EXISTS (SELECT 1 FROM public.user_profiles) INTO is_first;
   
   -- Bezpečné získání jména
   user_name := COALESCE(
@@ -90,7 +103,7 @@ BEGIN
     user_name,
     -- PRVNÍ uživatel = admin, ostatní = warehouse_user
     CASE 
-      WHEN next_num = 1 THEN 'admin'
+      WHEN is_first THEN 'admin'
       ELSE 'warehouse_user'
     END
   );

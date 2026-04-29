@@ -27,6 +27,7 @@ export default function LoginPage() {
 
   const [mode, setMode] = useState<Mode>('login')
   const [name, setName] = useState("")
+  const [uih, setUih] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +54,11 @@ export default function LoginPage() {
       return
     }
 
+    if (mode === 'register' && !uih.trim()) {
+      setError("Vyplňte vaše UIH (z SAPu).")
+      return
+    }
+
     setSubmitting(true)
     const email = nameToEmail(name)
 
@@ -65,7 +71,7 @@ export default function LoginPage() {
         setError("Neplatné jméno nebo heslo.")
       }
     } else {
-      const res = await signUp(email, password, name.trim())
+      const res = await signUp(email, password, name.trim(), uih.trim().toUpperCase())
       if (res.success) {
         setSuccess("Registrace úspěšná! Nyní se přihlaste.")
         setMode('login')
@@ -155,6 +161,22 @@ export default function LoginPage() {
               />
             </div>
 
+            {/* UIH (register only) */}
+            {mode === 'register' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vaše UIH (z SAPu) *</label>
+                <input
+                  type="text"
+                  value={uih}
+                  onChange={(e) => setUih(e.target.value.toUpperCase())}
+                  placeholder="Např. UIH001"
+                  className="glass-input uppercase font-mono"
+                  required
+                />
+                <p className="text-[10px] text-slate-600">Zadejte stejné UIH, které používáte v SAPu.</p>
+              </div>
+            )}
+
             {/* Password */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Heslo *</label>
@@ -212,8 +234,7 @@ export default function LoginPage() {
             {/* Info */}
             {mode === 'register' && (
               <p className="text-[10px] text-slate-600 text-center leading-relaxed">
-                Po registraci bude automaticky přiřazen unikátní UIH kód.
-                <br />Stačí zadat jméno a heslo — žádný email není potřeba.
+                Stačí zadat jméno, vaše UIH a heslo — žádný email není potřeba.
               </p>
             )}
           </form>
