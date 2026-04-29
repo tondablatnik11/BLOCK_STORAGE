@@ -1,8 +1,18 @@
--- Supabase SQL Migration: Uživatelské profily
--- Spusťte v Supabase SQL Editor
+-- ============================================
+-- BLOCK STORAGE: Opravená migrace user_profiles
+-- Spusťte v Supabase SQL Editor (nahrazuje 004)
+-- ============================================
 
--- Tabulka uživatelských profilů
-CREATE TABLE IF NOT EXISTS user_profiles (
+-- 1) Nejdříve odstraníme starý trigger a funkci (pokud existují)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS handle_new_user();
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
+-- 2) Smazat starou tabulku (pokud existuje s chybnou strukturou)
+DROP TABLE IF EXISTS user_profiles;
+
+-- 3) Vytvořit tabulku znovu
+CREATE TABLE public.user_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_id UUID UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
@@ -15,68 +25,90 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Indexy
-CREATE INDEX IF NOT EXISTS idx_user_profiles_auth_id ON user_profiles(auth_id);
-CREATE INDEX IF NOT EXISTS idx_user_profiles_uih ON user_profiles(uih);
-CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON user_profiles(email);
-CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON user_profiles(role);
+-- 4) Indexy
+CREATE INDEX idx_user_profiles_auth_id ON public.user_profiles(auth_id);
+CREATE INDEX idx_user_profiles_uih ON public.user_profiles(uih);
+CREATE INDEX idx_user_profiles_email ON public.user_profiles(email);
 
--- Funkce pro automatické vytvoření profilu při registraci
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS trigger AS $$
+-- 5) VYPNOUT RLS na user_profiles (trigger potřebuje přístup)
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Povolit čtení pro přihlášené uživatele
+CREATE POLICY "Authenticated users can read profiles"
+  ON public.user_profiles FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- Povolit update pro vlastní profil
+CREATE POLICY "Users can update own profile"
+  ON public.user_profiles FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = auth_id);
+
+-- Povolit INSERT pro service role (trigger)
+CREATE POLICY "Service role can insert"
+  ON public.user_profiles FOR INSERT
+  TO service_role
+  WITH CHECK (true);
+
+-- 6) Trigger funkce — SECURITY DEFINER + search_path
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   next_num INTEGER;
   new_uih TEXT;
+  user_name TEXT;
 BEGIN
-  -- Generování UIH: UIH001, UIH002...
-  SELECT COALESCE(MAX(CAST(SUBSTRING(uih FROM 4) AS INTEGER)), 0) + 1
+  -- Bezpečné generování UIH
+  SELECT COALESCE(MAX(
+    CASE 
+      WHEN uih ~ '^UIH[0-9]+$' 
+      THEN CAST(SUBSTRING(uih FROM 4) AS INTEGER) 
+      ELSE 0 
+    END
+  ), 0) + 1
   INTO next_num
-  FROM user_profiles;
+  FROM public.user_profiles;
   
   new_uih := 'UIH' || LPAD(next_num::TEXT, 3, '0');
   
-  INSERT INTO user_profiles (auth_id, email, uih, full_name)
+  -- Bezpečné získání jména
+  user_name := COALESCE(
+    NEW.raw_user_meta_data ->> 'full_name',
+    split_part(COALESCE(NEW.email, ''), '@', 1)
+  );
+  
+  INSERT INTO public.user_profiles (auth_id, email, uih, full_name, role)
   VALUES (
     NEW.id,
-    NEW.email,
+    COALESCE(NEW.email, ''),
     new_uih,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1))
+    user_name,
+    -- PRVNÍ uživatel = admin, ostatní = warehouse_user
+    CASE 
+      WHEN next_num = 1 THEN 'admin'
+      ELSE 'warehouse_user'
+    END
   );
   
   RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Pokud trigger selže, alespoň nezablokuje registraci
+  RAISE LOG 'handle_new_user error: %', SQLERRM;
+  RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
--- Trigger: automatické vytvoření profilu
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+-- 7) Trigger na auth.users
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- RLS politiky
-ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-
--- Uživatel vidí svůj profil
-CREATE POLICY "Users can view own profile"
-  ON user_profiles FOR SELECT
-  USING (auth.uid() = auth_id);
-
--- Admin vidí všechny profily
-CREATE POLICY "Admins can view all profiles"
-  ON user_profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE auth_id = auth.uid() AND role = 'admin'
-    )
-  );
-
--- Admin může editovat profily
-CREATE POLICY "Admins can update profiles"
-  ON user_profiles FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE auth_id = auth.uid() AND role = 'admin'
-    )
-  );
+-- 8) Povolit anon a authenticated přístup k tabulce
+GRANT SELECT ON public.user_profiles TO anon;
+GRANT SELECT, UPDATE ON public.user_profiles TO authenticated;
+GRANT ALL ON public.user_profiles TO service_role;
