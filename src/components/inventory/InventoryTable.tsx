@@ -4,12 +4,13 @@ import { useState, useMemo, useEffect } from "react"
 import { InventoryRecord } from "../../types/app"
 import { formatDate } from "../../lib/utils"
 import SearchBar from "./SearchBar"
-import { Edit2, ArrowRightLeft, Package, Archive, Download, ArrowUpDown, Filter, Plus, X, Columns, Bookmark, MoreHorizontal } from "lucide-react"
+import { Edit2, ArrowRightLeft, Package, Archive, Download, ArrowUpDown, Filter, Plus, X, Columns, Bookmark, MoreHorizontal, MessageSquare } from "lucide-react"
 import * as XLSX from "xlsx"
 import EditRecordModal from "../modals/EditRecordModal"
 import TransferModal from "../modals/TransferModal"
 import BulkArchiveModal from "../modals/BulkArchiveModal"
 import AddRecordModal from "../modals/AddRecordModal"
+import NoteModal from "../modals/NoteModal"
 
 interface InventoryTableProps {
   initialData: InventoryRecord[]
@@ -48,6 +49,7 @@ export default function InventoryTable({ initialData, externalBlockFilter }: Inv
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkArchiveOpen, setIsBulkArchiveOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
+  const [noteRecord, setNoteRecord] = useState<InventoryRecord | null>(null)
 
   // Sync external block filter (from block drawer click)
   useEffect(() => {
@@ -381,8 +383,22 @@ export default function InventoryTable({ initialData, externalBlockFilter }: Inv
                         <span className={`position-dot ${getPositionColor(record.bin_location)}`}></span>
                         {record.bin_location}
                       </td>
-                      <td className="px-4 py-2.5 text-[13px] text-slate-500 max-w-[180px] truncate" title={record.notes || ""}>
-                        {record.notes || "—"}
+                      <td 
+                        className="px-4 py-2.5 text-[13px] max-w-[180px] cursor-pointer group/note"
+                        onClick={() => setNoteRecord(record)}
+                        title={record.notes || "Klikněte pro přidání poznámky"}
+                      >
+                        {record.notes ? (
+                          <span className="flex items-center gap-1.5 text-slate-400 hover:text-amber-400 transition-colors">
+                            <span className="truncate">{record.notes}</span>
+                            <MessageSquare className="w-3 h-3 shrink-0 opacity-0 group-hover/note:opacity-100 transition-opacity" />
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-slate-600 hover:text-amber-400 transition-colors">
+                            <MessageSquare className="w-3 h-3" />
+                            <span className="text-xs">Přidat</span>
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-right">
                         <div className="flex justify-end gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
@@ -459,6 +475,7 @@ export default function InventoryTable({ initialData, externalBlockFilter }: Inv
       <TransferModal isOpen={!!transferringRecord} onClose={() => setTransferringRecord(null)} record={transferringRecord} />
       <BulkArchiveModal isOpen={isBulkArchiveOpen} onClose={() => setIsBulkArchiveOpen(false)} selectedIds={Array.from(selectedIds)} onSuccess={() => setSelectedIds(new Set())} />
       <AddRecordModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      <NoteModal isOpen={!!noteRecord} onClose={() => setNoteRecord(null)} record={noteRecord} />
     </div>
   )
 }
