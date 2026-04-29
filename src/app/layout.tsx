@@ -8,8 +8,8 @@ import { Toaster } from "sonner"
 const inter = Inter({ subsets: ["latin", "latin-ext"] })
 
 export const metadata: Metadata = {
-  title: "BLOCK WMS | Řídicí centrum skladu",
-  description: "Prémiové logistické řídicí centrum pro správu externích bloků",
+  title: "BLOCK STORAGE | Přehled a správa externího skladu",
+  description: "Přehled a správa externího skladu — Handling Units, bloky, přesuny, inventury",
 }
 
 export default function RootLayout({

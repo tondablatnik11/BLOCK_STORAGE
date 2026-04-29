@@ -39,7 +39,7 @@ const navSections: NavSection[] = [
   {
     category: "OPERACE",
     items: [
-      { name: "Přesun do SAP", href: "/transfer", icon: ArrowRightLeft },
+      { name: "Přesun do Pick skladu", href: "/transfer", icon: ArrowRightLeft },
       { name: "Hromadné akce", href: "/bulk", icon: Layers },
       { name: "Undo poslední akce", href: "/history", icon: Undo2 },
     ]
@@ -75,7 +75,7 @@ export default function Sidebar() {
             <Box className="w-5 h-5 text-blue-400" />
           </div>
           <span className="font-black text-base tracking-wider text-slate-100 uppercase">
-            BLOCK <span className="text-blue-500">WMS</span>
+            BLOCK <span className="text-blue-500">STORAGE</span>
           </span>
         </div>
       </div>

@@ -23,8 +23,8 @@ export default function ReportsContent({ stats, transferTrend }: ReportsContentP
       ]
     },
     {
-      title: "Přesuny do SAPu",
-      description: "Report o přesunech do SAPu za aktuální měsíc.",
+      title: "Přesuny do Pick skladu",
+      description: "Report o přesunech do Pick skladu za aktuální měsíc.",
       icon: ArrowRightLeft,
       color: "text-emerald-400",
       bg: "bg-emerald-500/10",

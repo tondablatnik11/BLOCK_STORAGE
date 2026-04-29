@@ -43,14 +43,18 @@ export async function getKPIData(period: 'day' | 'week' | 'month' = 'day'): Prom
     return null
   }
 
-  // Získáme trend pro graf (posledních 7 dní)
-  const { data: trendData } = await (supabase as any)
-    .from('history_logs')
-    .select('created_at')
-    .in('action', ['partial_transfer', 'full_transfer'])
-    .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-  
-  return { ...viewData, trend: trendData || [] }
+  // Získáme počet HU v nejplnějším bloku
+  let mostFilledBlockCount: number | null = null
+  if (viewData?.most_filled_block) {
+    const { count } = await (supabase as any)
+      .from('inventory')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active')
+      .eq('block', viewData.most_filled_block)
+    mostFilledBlockCount = count
+  }
+
+  return { ...viewData, most_filled_block_count: mostFilledBlockCount }
 }
 
 // ═══════════════════════════════════════════════
@@ -75,7 +79,7 @@ export async function getBlockUtilization(): Promise<Record<string, number>> {
 }
 
 // ═══════════════════════════════════════════════
-// PŘESUNY DO SAPu — Denní agregace za posledních 7 dní
+// PŘESUNY DO PICK SKLADU — Denní agregace za posledních 7 dní
 // ═══════════════════════════════════════════════
 export async function getTransferTrend(): Promise<{ date: string; count: number }[]> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -403,7 +407,7 @@ export async function updateInventoryRecord(
   return { success: true, message: "Záznam úspěšně upraven." }
 }
 
-// Přesun do SAPu (částečný nebo úplný)
+// Přesun do Pick skladu (částečný nebo úplný)
 export async function transferToSAP(
   uih: string,
   id: string,
@@ -426,7 +430,7 @@ export async function transferToSAP(
   const isFullTransfer = remainingQuantity === 0
 
   if (isFullTransfer) {
-    const payload = { quantity: 0, status: 'archived', notes: notes || "Přesun do SAPu" }
+    const payload = { quantity: 0, status: 'archived', notes: notes || "Přesun do Pick skladu" }
     
     const { error: updateError } = await (supabase as any)
       .from('inventory')
@@ -451,7 +455,7 @@ export async function transferToSAP(
   }
 
   revalidatePath('/')
-  return { success: true, message: isFullTransfer ? "HU kompletně přesunuta do SAPu a archivována." : "Část HU přesunuta do SAPu." }
+  return { success: true, message: isFullTransfer ? "HU kompletně přesunuta do Pick skladu a archivována." : "Část HU přesunuta do Pick skladu." }
 }
 
 // Hromadná archivace (Odstranění)

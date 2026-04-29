@@ -1,0 +1,1189 @@
+Níže máš finální, rozšířený prompt včetně bodu Nápověda a doplnění změny jazyka na angličtinu v nastavení.
+
+Jsi seniorní full-stack vývojář a software architect se specializací na Next.js, React, TypeScript, Tailwind CSS, Supabase/PostgreSQL a návrh WMS / skladových aplikací.
+
+Pracuješ na projektu BLOCK_STORAGE:
+https://github.com/tondablatnik11/BLOCK_STORAGE
+
+K dispozici máš také aktuální audit projektu. Audit si nejdříve přečti a respektuj jeho závěry, hlavně v oblastech:
+
+- databázová integrita,
+- audit log,
+- Supabase migrace,
+- transakčnost zápisových operací,
+- login a automatické UIH,
+- sjednocení názvosloví,
+- UI/UX a přístupnost,
+- bezpečné zavádění nových funkcí.
+
+Cílem této fáze je výrazně vylepšit aplikaci BLOCK_STORAGE po stránce vzhledu, funkčnosti, názvosloví a provozní použitelnosti pro správu externího skladu.
+
+---
+
+# 1. Základní pravidla práce
+
+Dodržuj tato pravidla:
+
+1. Nejdříve analyzuj aktuální stav repozitáře.
+2. Nejdříve navrhni plán, potom implementuj.
+3. Před generováním kódu napiš:
+   - jaké soubory budeš měnit,
+   - jaké nové soubory přidáš,
+   - jestli jsou potřeba databázové změny,
+   - jaké edge cases budeš řešit.
+4. Pokud budeš generovat kód, vždy posílej celé soubory.
+5. Nikdy nepoužívej zástupné komentáře typu:
+   - `// ...`
+   - `// zbytek kódu`
+   - `TODO`
+   - `unchanged`
+6. Pokud je potřeba změna databáze, vytvoř SQL migraci do projektu.
+7. Kritická business pravidla nevynucuj pouze ve frontendu.
+8. Zachovej aktuální moderní dark enterprise styl aplikace.
+9. Neodstraňuj existující funkčnost, pokud není výslovně nahrazena lepším řešením.
+10. Po implementaci uveď seznam změn a testovací checklist.
+
+---
+
+# 2. Branding a hlavní názvosloví
+
+## 2.1 Název aplikace
+
+Změň název aplikace:
+
+```txt
+BLOCK WMS
+
+na:
+
+BLOCK STORAGE
+
+Týká se zejména:
+
+loga vlevo nahoře,
+metadata aplikace,
+případných hlaviček,
+názvů v UI.
+2.2 Popis aplikace
+
+Aktuální text:
+
+Řídicí centrum skladu
+Přehled a správa skladových operací
+
+nahraď textem:
+
+Přehled a správa externího skladu
+
+V topbaru může být například:
+
+BLOCK STORAGE
+Přehled a správa externího skladu
+
+nebo pokud je název už v levém logu, stačí v topbaru zobrazit:
+
+Přehled a správa externího skladu
+2.3 Přejmenování SAP na Pick sklad
+
+V celé aplikaci přepiš uživatelské texty:
+
+SAP
+SAPu
+SAP sklad
+Přesun do SAPu
+Přesunout do SAPu
+Přesuny do SAPu
+Přesun do SAP skladu
+
+na:
+
+Pick sklad
+Pick skladu
+Přesun do Pick skladu
+Přesunout do Pick skladu
+Přesuny do Pick skladu
+
+Interní DB action typy jako partial_transfer nebo full_transfer mohou zůstat kvůli kompatibilitě, ale všechny viditelné texty, toast zprávy, modály, tlačítka, KPI a popisky musí používat nové názvosloví „Pick sklad“.
+
+3. Přehled / Skladové zásoby — vytíženost bloků
+
+Na hlavní stránce Přehled / Skladové zásoby je vpravo widget „Vytíženost bloků“.
+
+3.1 Zobrazit počet HU u každého bloku
+
+U každého čísla bloku zobraz také počet aktivních HU v daném bloku.
+
+Příklad buňky:
+
+07
+18 HU
+
+nebo kompaktně:
+
+07
+18
+
+Buňky musí zůstat čitelné i pro všech 30 bloků.
+
+3.2 Kliknutí na blok otevře detail bloku
+
+Po kliknutí na číslo bloku zobraz detailní přehled materiálů v daném bloku.
+
+Preferované UI:
+
+pravý drawer,
+modal,
+nebo rozbalovací detailní panel.
+
+Preferuji pravý drawer, protože aplikace už má pravý analytický sidebar.
+
+Detail bloku musí obsahovat:
+
+BLOCK
+Celkový počet HU v bloku
+Celkový počet kusů v bloku
+Počet unikátních materiálů
+Tabulka materiálů v bloku
+
+Tabulka materiálů:
+
+Materiál
+Počet HU
+Celkové množství ks
+Počet pozic
+Poslední aktualizace
+
+Doplň akci:
+
+Filtrovat tento BLOCK v tabulce
+
+Po kliknutí se hlavní tabulka „Skladové zásoby“ nastaví na filtr daného bloku.
+
+4. Skladové zásoby — filtry a souhrn filtrovaných dat
+
+V hlavní tabulce „Skladové zásoby“ už existují filtry.
+
+Požadovaná změna:
+
+Pokud uživatel zadá filtr, zejména podle:
+
+materiálu,
+bloku,
+HU,
+pozice,
+globálního vyhledávání,
+
+zobraz nahoře nad tabulkou nebo v hlavičce tabulky souhrn filtrovaného výběru.
+
+Příklad:
+
+Filtrovaný výběr: 42 HU / 12 580 ks
+
+Souhrn musí počítat:
+
+počet HU ve filtrovaném výsledku,
+součet quantity ve filtrovaném výsledku.
+
+Zobrazuj ho vždy, když je aktivní alespoň jeden filtr nebo globální search.
+
+Doporučené UI:
+
+Skladové zásoby
+1 234 záznamů
+
+Výsledek filtru:
+42 HU
+12 580 ks
+
+Aktivní filtry zobraz jako chips:
+
+BLOCK: BLOCK-07 ×
+Materiál: BETON C25/30 ×
+5. Nová funkce Inventura
+
+Do aplikace přidej novou funkci:
+
+Inventura
+
+Inventura slouží k evidenci fyzické kontroly množství na HU.
+
+U každé inventury eviduj:
+
+HU
+BLOCK
+Materiál
+Pozice
+Systémové množství
+Fyzicky spočítané množství
+Datum inventury
+Výsledek OK / NOK
+Uživatel / UIH
+Poznámka
+5.1 Databázový model inventur
+
+Přidej SQL migraci pro inventury.
+
+Preferovaný model:
+
+inventory_checks
+  id
+  inventory_id
+  hu_number
+  block
+  material
+  bin_location
+  system_quantity
+  counted_quantity
+  result
+  checked_at
+  checked_by_uih
+  notes
+  scope
+  batch_id
+  created_at
+  updated_at
+
+Hodnoty:
+
+result = OK / NOK
+scope = single_hu / block
+
+Dále přidej tabulku pro dávkové inventury:
+
+inventory_check_batches
+  id
+  scope
+  block
+  created_by_uih
+  created_at
+  completed_at
+  notes
+  total_items
+  ok_count
+  nok_count
+
+Důležitá pravidla:
+
+inventura nesmí automaticky měnit množství v inventory,
+inventura je auditní záznam,
+pokud counted_quantity není stejné jako system_quantity, výsledek je NOK,
+při NOK je povinná poznámka,
+korekce množství musí probíhat samostatnou operací, ne automaticky inventurou.
+5.2 Sloupec Inventura v tabulce Skladové zásoby
+
+Do hlavní tabulky „Skladové zásoby“ přidej nový sloupec:
+
+Inventura
+
+Ve sloupci zobraz poslední inventurní stav dané HU.
+
+Příklady:
+
+OK
+12.01.2026
+100 ks
+
+nebo:
+
+NOK
+12.01.2026
+98 / 100 ks
+
+Pokud HU ještě neměla inventuru:
+
+Bez inventury
+
+Po kliknutí na hodnotu ve sloupci otevři modal nebo drawer pro zadání nové inventury dané HU.
+
+5.3 Zadání inventury pro jednu HU
+
+Modal / drawer pro inventuru jedné HU musí obsahovat:
+
+HU
+Materiál
+BLOCK
+Pozice
+Systémové množství
+Fyzicky spočítané množství
+Datum inventury
+Automatický výsledek OK/NOK
+Poznámka
+Uživatel / UIH
+
+Pokud je uživatel přihlášený, UIH se vyplní automaticky z profilu.
+
+5.4 Zadání inventury pro celý BLOCK
+
+Do sekce Operace v levém Sidebaru přidej položku:
+
+Zadat inventuru
+
+Doporučená route:
+
+/inventory-checks/new
+
+Na stránce umožni dva režimy:
+
+Jednotlivá HU
+Celý BLOCK
+
+V režimu „Celý BLOCK“:
+
+uživatel vybere BLOCK,
+aplikace načte všechny aktivní HU v daném bloku,
+zobrazí tabulku HU,
+u každé HU bude možné zadat fyzicky spočítané množství,
+systém vyhodnotí OK/NOK,
+u NOK bude povinná poznámka,
+po uložení vznikne dávka v inventory_check_batches,
+pro každou HU vznikne záznam v inventory_checks.
+5.5 Historie inventur
+
+Do sekce Historie v levém Sidebaru přidej položku:
+
+Historie inventur
+
+Doporučená route:
+
+/inventory-checks/history
+
+Tabulka historie inventur má mít sloupce:
+
+Datum
+Uživatel / UIH
+BLOCK
+Materiál
+HU
+Pozice
+Systémové ks
+Spočítané ks
+Výsledek
+Poznámka
+Dávka
+
+Filtry:
+
+Datum od/do
+BLOCK
+Materiál
+HU
+Výsledek OK/NOK
+Uživatel/UIH
+
+Defaultní řazení: nejnovější inventury nahoře.
+
+5.6 Přehled inventur v analytice
+
+Do sekce Analytika v levém Sidebaru přidej položku:
+
+Přehled inventur
+
+Doporučená route:
+
+/inventory-checks/analytics
+
+Stránka má zobrazit KPI:
+
+Počet inventur dnes
+Počet inventur tento měsíc
+Počet OK
+Počet NOK
+Procento NOK
+Nejčastější materiály s NOK
+Bloky s nejvíce NOK
+Poslední inventury
+Bloky podle poslední inventury
+
+Volitelně přidej graf:
+
+OK vs NOK za posledních 30 dní
+6. Export CSV změnit na Export XLSX
+
+V aplikaci nahraď export CSV exportem do Excelu.
+
+Požadavky:
+
+změň tlačítko Export CSV na Export XLSX,
+exportuj aktuálně filtrovaná data,
+použij knihovnu xlsx,
+exportovaný soubor musí mít příponu .xlsx,
+export musí respektovat aktivní filtry,
+export musí obsahovat čitelné české hlavičky.
+
+Sheet:
+
+Skladové zásoby
+
+Sloupce:
+
+BLOCK
+Materiál
+HU
+Množství
+Pozice
+Poznámka
+Inventura status
+Inventura datum
+Inventura množství
+Aktualizováno
+
+Volitelně přidej druhý sheet:
+
+Souhrn
+
+Obsah sheetu Souhrn:
+
+Počet HU
+Celkové množství ks
+Aktivní filtry
+Datum exportu
+Exportoval
+
+Pokud je uživatel přihlášený, do exportu doplň jeho UIH nebo jméno.
+
+7. Nastavení aplikace
+
+Vpravo nahoře je ozubené kolečko Nastavení. Aktuálně po kliknutí nic nedělá.
+
+Požadavek:
+
+Po kliknutí na ozubené kolečko otevři funkční nastavení aplikace.
+
+Preferované UI:
+
+pravý drawer,
+modal,
+nebo dropdown.
+
+Doporučuji pravý drawer.
+
+7.1 Nastavení vzhledu a ovládání
+
+Nastavení má obsahovat:
+
+Jazyk aplikace: Čeština / Angličtina
+Hustota tabulky: komfortní / kompaktní / scanner režim
+Automatický focus do vyhledávání
+Zobrazit / skrýt pravý analytický sidebar
+Výchozí počet řádků v tabulkách
+Potvrzovat nebezpečné akce
+7.2 Jazyk aplikace
+
+Přidej možnost změnit jazyk aplikace:
+
+Čeština
+Angličtina
+
+V první fázi stačí připravit jednoduchý překladový systém pro hlavní UI texty.
+
+Doporučení:
+
+src/lib/i18n/
+  cs.ts
+  en.ts
+  index.ts
+
+nebo jiná jednoduchá struktura podle aktuálního projektu.
+
+Nemusíš přeložit úplně každý technický text, ale přelož hlavní viditelné části:
+
+sidebar,
+topbar,
+KPI karty,
+tlačítka,
+tabulkové hlavičky,
+modály,
+základní toast zprávy,
+nápovědu.
+
+Jazyk ukládej:
+
+do localStorage, pokud ještě není implementované ukládání uživatelského nastavení,
+nebo do user_settings, pokud zavedeš uživatelské profily.
+7.3 Skladové nastavení
+
+Přidej praktické parametry:
+
+Výchozí BLOCK pro přidání záznamu
+Výchozí BLOCK pro import
+Výchozí strategie importu
+Interval inventury v dnech
+Upozornit na HU bez inventury starší než X dní
+Výchozí exportní formát XLSX
+7.4 Systémové informace
+
+Zobraz readonly informace:
+
+Verze aplikace
+Prostředí
+Stav připojení k databázi
+Aktuální uživatel
+Role uživatele
+
+Pokud zatím neexistuje persistentní nastavení, použij localStorage.
+
+Později může vzniknout tabulka:
+
+user_settings
+  id
+  user_profile_id
+  settings jsonb
+  updated_at
+8. Login a automatické UIH
+
+Aktuálně aplikace vyžaduje ruční zadávání UIH při změnách.
+
+Požadovaná změna:
+
+Přidej login funkci tak, aby po přihlášení už uživatel nemusel zadávat UIH ručně. UIH se automaticky vezme z profilu přihlášeného uživatele.
+
+8.1 Doporučené řešení
+
+Použij Supabase Auth.
+
+Přidej tabulku:
+
+user_profiles
+  id
+  auth_user_id
+  uih
+  display_name
+  role
+  created_at
+  updated_at
+
+Role:
+
+admin
+warehouse_user
+readonly
+8.2 Topbar login
+
+Vpravo nahoře oprav profil uživatele.
+
+Pokud uživatel není přihlášený, zobraz:
+
+Přihlásit se
+
+Po kliknutí otevři login modal nebo route:
+
+/login
+
+Pokud je uživatel přihlášený, zobraz:
+
+Jméno uživatele
+UIH
+Role
+
+Přidej user dropdown:
+
+Můj profil
+Nastavení
+Odhlásit se
+8.3 Zápisové akce
+
+Všechny zápisové akce musí používat UIH z přihlášeného profilu:
+
+Přidání záznamu
+Úprava množství
+Úprava pozice
+Úprava poznámky
+Přesun do Pick skladu
+Hromadná archivace
+Import
+Inventura
+Undo / kompenzace
+
+Ruční pole UIH z formulářů odeber, nebo ho zobraz jako readonly hodnotu, pokud je uživatel přihlášený.
+
+Pokud uživatel není přihlášený a chce provést zápis, zobraz:
+
+Pro tuto akci se musíte přihlásit.
+8.4 Bezpečnost
+
+Nepoužívej fake login pouze ve frontendu.
+
+Login musí být napojený na Supabase Auth, nebo jasně popiš, co je potřeba nastavit v Supabase.
+
+9. Zvoneček s notifikacemi
+
+Zvoneček vpravo nahoře aktuálně není potřeba.
+
+Požadavek:
+
+odstraň zvoneček z topbaru,
+nebo ho nahraď reálně užitečnou funkcí.
+
+Pokud notifikace ponecháš, musí mít skutečný obsah, například:
+
+HU bez inventury starší než X dní
+Poslední NOK inventury
+Chyby posledního importu
+Neúspěšný zápis do audit logu
+Pokus o duplicitní HU
+
+Pokud tyto notifikace nebudeš implementovat nyní, zvoneček odstraň.
+
+10. Horní KPI panel
+
+Uprav horní KPI panel.
+
+10.1 Aktivní HU
+
+Změň label:
+
+Aktivní HU
+
+na:
+
+Celkový počet HU
+
+Tato hodnota má znamenat počet aktivních HU v externím skladu.
+
+Archivované HU do hlavního KPI nezapočítávej, pokud nebude vytvořeno samostatné KPI pro archiv.
+
+10.2 Nejplnější blok
+
+Změň label:
+
+Nejplnější blok
+
+na:
+
+Nejvytíženější BLOCK
+
+K hodnotě přidej i počet HU v daném blocku.
+
+Příklad:
+
+BLOCK-07
+18 HU
+
+Pokud je potřeba upravit KPI view, query nebo aplikační výpočet, udělej to.
+
+10.3 Přesuny dnes
+
+Změň label:
+
+Přesuny do SAPu (dnes)
+
+na:
+
+Počet přesunů do Pick skladu (dnes)
+10.4 Přesuny měsíc
+
+Změň label:
+
+Přesuny do SAPu (měsíc)
+
+na:
+
+Počet přesunů do Pick skladu (měsíc)
+10.5 Top materiál
+
+Top materiál může zůstat, ale zpřesni popisek:
+
+Materiál s nejvíce HU
+
+nebo:
+
+Top materiál podle HU
+10.6 Falešné trendy
+
+Pokud jsou v KPI kartách hardcoded trendy typu:
+
++5.2 %
++12.4 %
++8.1 %
+
+buď je napoj na reálná data, nebo je odstraň.
+
+Nezobrazuj falešné metriky.
+
+11. Poznámky ve skladových zásobách
+
+Ve sloupci „Poznámka“ v tabulce „Skladové zásoby“ přidej interakci.
+
+Po kliknutí na poznámku otevři modal nebo drawer, kde bude možné:
+
+Zobrazit aktuální poznámku
+Upravit poznámku
+Přidat novou poznámku
+Vidět historii poznámek
+Vidět kdo poznámku napsal/upravil
+Vidět datum vytvoření/úpravy
+11.1 Datový model poznámek
+
+Aktuální inventory.notes může zůstat jako poslední aktuální poznámka pro rychlé zobrazení v tabulce.
+
+Pro historii poznámek přidej tabulku:
+
+inventory_notes
+  id
+  inventory_id
+  hu_number
+  note
+  created_by_uih
+  created_at
+
+Pokud budeš podporovat editaci existující poznámky, přidej:
+
+updated_by_uih
+updated_at
+
+Preferovaný model:
+
+poznámky se spíše přidávají jako nové auditní záznamy,
+inventory.notes obsahuje poslední / aktuální poznámku,
+historie poznámek zůstává zachovaná.
+11.2 Audit log poznámek
+
+Každá změna poznámky se musí zapsat do history_logs jako:
+
+update_note
+
+Audit log má obsahovat:
+
+Stará poznámka
+Nová poznámka
+UIH
+HU
+inventory_id
+datum
+metadata, že změna proběhla přes note modal
+11.3 UI poznámky
+
+Ve sloupci Poznámka:
+
+pokud poznámka existuje, zobraz krátký text a ikonu editace,
+pokud poznámka neexistuje, zobraz Přidat poznámku,
+po hoveru ukaž, že je pole klikatelné.
+
+Modal/drawer má obsahovat:
+
+HU
+Materiál
+BLOCK
+Pozice
+Aktuální poznámka
+Nová poznámka
+Historie poznámek
+Uložit
+
+Pokud je uživatel přihlášený, UIH doplň automaticky.
+
+12. Nová záložka Nápověda
+
+Vytvoř novou záložku:
+
+Nápověda
+
+Umísti ji dolů do levého Sidebaru, ideálně do spodní části navigace nebo do samostatné sekce:
+
+PODPORA
+  Nápověda
+
+Doporučená route:
+
+/help
+12.1 Cíl nápovědy
+
+Nápověda má být napsaná tak, aby aplikaci pochopil i člověk, který se v ní neorientuje.
+
+Musí vysvětlit:
+
+k čemu aplikace slouží,
+co je BLOCK,
+co je HU,
+co znamená materiál,
+co znamená pozice,
+co znamená aktivní / archivovaný záznam,
+co je Pick sklad,
+jak funguje přesun do Pick skladu,
+jak funguje inventura,
+co znamená OK/NOK inventura,
+jak funguje import,
+jak funguje historie,
+jak fungují filtry,
+jak funguje export XLSX.
+12.2 Struktura stránky Nápověda
+
+Nápovědu rozděl do přehledných sekcí:
+
+1. Rychlý start
+2. Základní pojmy
+3. Skladové zásoby
+4. Vyhledávání a filtry
+5. Přidání nové HU
+6. Přesun do Pick skladu
+7. Inventura
+8. Hromadné akce
+9. Import dat
+10. Export XLSX
+11. Historie a audit log
+12. Role uživatelů
+13. Časté problémy
+12.3 Rychlý start
+
+Sekce Rychlý start má obsahovat jednoduchý postup:
+
+1. Přihlaste se.
+2. Na stránce Skladové zásoby vyhledejte HU, materiál, pozici nebo BLOCK.
+3. Pomocí filtrů omezte zobrazení.
+4. Pro přesun do Pick skladu klikněte na akci u HU.
+5. Pro inventuru klikněte na sloupec Inventura nebo otevřete Operace > Zadat inventuru.
+6. Pro import použijte Sklad > Import dat.
+7. Historii všech akcí najdete v sekci Historie.
+12.4 Základní pojmy
+
+Vysvětli pojmy:
+
+BLOCK
+HU
+Materiál
+Množství
+Pozice
+Pick sklad
+Inventura
+OK
+NOK
+Audit log
+12.5 Časté problémy
+
+Přidej FAQ, například:
+
+Proč nejde přidat HU?
+Co znamená duplicitní HU?
+Proč musím být přihlášený?
+Co dělat, když je inventura NOK?
+Co dělat, když je špatná pozice?
+Jak opravit poznámku?
+Jak zjistím historii konkrétní HU?
+Proč nevidím archivované HU?
+12.6 UI nápovědy
+
+Nápověda má být přehledná a moderní:
+
+vyhledávací pole v nápovědě,
+karty nebo akordeony pro jednotlivé sekce,
+zvýrazněné tipy,
+zvýrazněná varování,
+jednoduché příklady.
+
+Doporučené komponenty:
+
+HelpPage
+HelpSearch
+HelpSection
+HelpAccordion
+HelpTip
+HelpWarning
+
+Nápověda má být dostupná i pro nepřihlášeného uživatele, pokud bude aplikace chráněná loginem. Minimálně login stránka by měla mít odkaz na základní nápovědu.
+
+13. Sidebar změny
+
+Aktualizuj levý Sidebar.
+
+Branding
+
+Změň:
+
+BLOCK WMS
+
+na:
+
+BLOCK STORAGE
+Sekce Operace
+
+Přejmenuj:
+
+Přesun do SAP
+
+na:
+
+Přesun do Pick skladu
+
+Přidej:
+
+Zadat inventuru
+
+Route:
+
+/inventory-checks/new
+Sekce Historie
+
+Přidej:
+
+Historie inventur
+
+Route:
+
+/inventory-checks/history
+Sekce Analytika
+
+Přidej:
+
+Přehled inventur
+
+Route:
+
+/inventory-checks/analytics
+Spodní část Sidebaru
+
+Dolů do Sidebaru přidej:
+
+Nápověda
+
+Route:
+
+/help
+
+Ujisti se, že aktivní stav navigace funguje i pro nové routy.
+
+14. Doporučené nové komponenty
+
+Navrhni a podle potřeby přidej komponenty:
+
+BlockUtilizationWidget
+BlockDetailDrawer
+FilteredInventorySummary
+InventoryCheckCell
+InventoryCheckModal
+InventoryCheckNewPage
+InventoryCheckHistoryTable
+InventoryCheckAnalytics
+InventoryNoteModal
+SettingsDrawer
+LanguageSwitcher
+LoginModal
+UserMenu
+ExportXlsxButton
+HelpPage
+HelpSearch
+HelpSection
+HelpAccordion
+
+Pokud je vhodnější jiné pojmenování podle aktuální struktury projektu, použij konzistentní názvy.
+
+15. Doporučené server actions / funkce
+
+Navrhni a podle potřeby přidej:
+
+getBlockMaterialSummary(block)
+getFilteredInventorySummary(filters)
+
+createInventoryCheck(...)
+createBlockInventoryCheckBatch(...)
+getLastInventoryChecksForInventory()
+getInventoryCheckHistory(filters)
+getInventoryCheckAnalytics()
+
+addInventoryNote(...)
+getInventoryNotes(inventoryId)
+updateInventoryNote(...)
+
+getCurrentUserProfile()
+loginUser(...)
+logoutUser(...)
+
+getUserSettings()
+updateUserSettings(...)
+
+getHelpContent()
+
+Pokud použiješ Supabase Auth, přizpůsob implementaci podle Next.js App Router best practices.
+
+16. Technické požadavky
+16.1 Validace
+
+Přidej server-side validaci.
+
+Doporučená knihovna:
+
+zod
+
+Validuj:
+
+BLOCK
+HU
+Množství
+Pozice
+Poznámky
+Inventurní množství
+Datum inventury
+Login/profile data
+Importní parametry
+Jazyk aplikace
+Uživatelská nastavení
+
+Frontend validace nestačí.
+
+16.2 Databázová integrita
+
+Pokud v projektu stále chybí Supabase migrace, přidej je.
+
+Minimálně:
+
+supabase/migrations/
+  001_initial_schema.sql
+  002_inventory_checks.sql
+  003_inventory_notes.sql
+  004_user_profiles.sql
+  005_user_settings.sql
+
+Pokud existující databáze už má tabulky, navrhni migrace bezpečně pro existující data.
+
+16.3 Audit
+
+Každá důležitá změna musí být auditovaná:
+
+Přidání inventury
+Přidání poznámky
+Úprava poznámky
+Přesun do Pick skladu
+Hromadná archivace
+Import
+Editace množství
+Editace pozice
+Změna nastavení, pokud má provozní dopad
+
+Audit log nesmí být pouze best-effort. Pokud budeš upravovat serverovou logiku, preferuj transakce/RPC.
+
+16.4 Přístupová práva
+
+Po zavedení loginu připrav role:
+
+admin
+warehouse_user
+readonly
+
+Doporučené oprávnění:
+
+readonly:
+  pouze čtení
+
+warehouse_user:
+  běžné operace
+  inventury
+  poznámky
+  přesuny do Pick skladu
+
+admin:
+  hromadné akce
+  nastavení
+  undo/kompenzace
+  import overwrite
+17. Akceptační kritéria
+
+Po dokončení musí platit:
+
+Přehled / Skladové zásoby
+widget vytíženosti bloků zobrazuje počet HU u každého blocku,
+klik na block zobrazí materiálový přehled daného blocku,
+filtry v tabulce zobrazí souhrn počtu HU a kusů,
+export je XLSX, ne CSV,
+tabulka obsahuje sloupec Inventura,
+sloupec Poznámka je klikací a otevře modal/drawer.
+Inventura
+lze zadat inventuru jedné HU,
+lze zadat inventuru celého BLOCKu,
+inventura ukládá systémové i spočítané množství,
+výsledek OK/NOK se určuje podle rozdílu množství,
+NOK vyžaduje poznámku,
+existuje historie inventur,
+existuje analytický přehled inventur,
+poslední inventura se zobrazuje v hlavní tabulce.
+Login
+topbar umožňuje přihlášení,
+po přihlášení se zobrazuje uživatel/UIH/role,
+zápisové akce používají UIH automaticky,
+uživatel nemusí ručně zadávat UIH,
+odhlášení funguje.
+Nastavení
+ozubené kolečko otevírá funkční nastavení,
+nastavení obsahuje změnu jazyka Čeština/Angličtina,
+nastavení obsahuje praktické parametry pro skladovou aplikaci,
+zvoneček je odstraněn nebo nahrazen reálnou funkcí.
+KPI a názvosloví
+logo je BLOCK STORAGE,
+popis aplikace je Přehled a správa externího skladu,
+všude v UI je Pick sklad místo SAP,
+KPI texty jsou přepsané podle zadání,
+KPI nezobrazují falešné hardcoded trendy.
+Nápověda
+v Sidebaru je záložka Nápověda,
+existuje stránka /help,
+nápověda vysvětluje základní pojmy,
+nápověda obsahuje rychlý start,
+nápověda obsahuje FAQ,
+nápověda je srozumitelná i pro nového uživatele.
+Kvalita
+kód je typovaný,
+nepřibývají zbytečné any,
+nové zápisové akce mají server-side validaci,
+nové databázové změny jsou v migracích,
+nedochází k porušení pravidla unikátní aktivní HU,
+UI zůstává konzistentní s dark enterprise stylem aplikace.
+18. Doporučené pořadí implementace
+
+Implementaci rozděl do fází:
+
+Fáze 1 — texty, branding, KPI, export
+BLOCK WMS → BLOCK STORAGE.
+Popis aplikace → Přehled a správa externího skladu.
+SAP → Pick sklad.
+KPI texty a odstranění falešných trendů.
+Export CSV → XLSX.
+Fáze 2 — bloky a filtry
+Počet HU u každého blocku.
+Klik na block → detail materiálů.
+Souhrn filtrovaných dat v tabulce.
+Fáze 3 — poznámky
+Klikací poznámka.
+Note modal/drawer.
+Historie poznámek.
+Audit log poznámek.
+Fáze 4 — inventury
+DB migrace inventur.
+Sloupec Inventura v tabulce.
+Inventura jedné HU.
+Inventura celého BLOCKu.
+Historie inventur.
+Přehled inventur v analytice.
+Fáze 5 — login a automatické UIH
+Supabase Auth.
+User profiles.
+Topbar login/user menu.
+Automatické UIH ve všech zápisových akcích.
+Role a oprávnění.
+Fáze 6 — nastavení a jazyk
+Funkční Settings drawer/modal.
+Jazyk Čeština/Angličtina.
+Ukládání nastavení.
+Odstranění nebo nahrazení zvonečku.
+Fáze 7 — nápověda
+Stránka /help.
+Sidebar položka Nápověda.
+Rychlý start.
+Základní pojmy.
+FAQ.
+Vyhledávání v nápovědě.
+19. Výstup
+
+Nejdříve mi vrať:
+
+stručné shrnutí dopadu změn,
+návrh databázových změn,
+návrh nových rout a komponent,
+seznam souborů, které budeš měnit nebo přidávat,
+doporučené pořadí implementace,
+rizika a edge cases.
+
+Poté se zastav a počkej na schválení, než začneš generovat konkrétní soubory s kódem.
+
+
+Důležitá věta, kterou bych k tomu promptu ještě přidal úplně na konec:
+
+```text
+Pokud je rozsah příliš velký pro jednu implementační dávku, nerozpracovávej všechno povrchně. Rozděl změny do menších fází 

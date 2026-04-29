@@ -23,7 +23,7 @@ export default function TransferModal({ isOpen, onClose, record }: TransferModal
   useEffect(() => {
     if (record && isOpen) {
       setTransferQuantity(record.quantity)
-      setNotes("Přesun do SAPu")
+      setNotes("Přesun do Pick skladu")
       setError(null)
     }
   }, [record, isOpen])
@@ -60,7 +60,7 @@ export default function TransferModal({ isOpen, onClose, record }: TransferModal
   const isFullTransfer = remaining === 0
 
   return (
-    <ActionModal isOpen={isOpen} onClose={onClose} title="Přesun do SAP skladu" variant="green">
+    <ActionModal isOpen={isOpen} onClose={onClose} title="Přesun do Pick skladu" variant="green">
       <form onSubmit={handleSubmit} className="space-y-6">
         
         {/* Súhrn HU */}
@@ -118,7 +118,7 @@ export default function TransferModal({ isOpen, onClose, record }: TransferModal
             <ArrowRightLeft className="w-5 h-5 shrink-0 text-emerald-500 mt-0.5" />
             <div>
               <p className="font-bold text-emerald-400 mb-1">Částečný přesun</p>
-              <p>Do SAPu se přesune <strong>{transferQuantity} ks</strong>. Na fyzické pozici v aplikaci zůstane <strong>{remaining} ks</strong>.</p>
+              <p>Do Pick skladu se přesune <strong>{transferQuantity} ks</strong>. Na fyzické pozici v aplikaci zůstane <strong>{remaining} ks</strong>.</p>
             </div>
           </div>
         )}

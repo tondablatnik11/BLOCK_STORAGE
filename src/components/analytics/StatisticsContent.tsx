@@ -67,7 +67,7 @@ export default function StatisticsContent({ stats }: { stats: any }) {
           <h3 className="text-sm font-bold text-white mb-4">Operace tento měsíc</h3>
           <div className="space-y-4">
             {[
-              { label: "Přesuny do SAPu", value: stats.transfersMonth, icon: ArrowRightLeft, color: "text-emerald-400", bar: "bg-emerald-500" },
+              { label: "Přesuny do Pick skladu", value: stats.transfersMonth, icon: ArrowRightLeft, color: "text-emerald-400", bar: "bg-emerald-500" },
               { label: "Hromadné importy", value: stats.importsMonth, icon: Upload, color: "text-purple-400", bar: "bg-purple-500" },
               { label: "Přesuny dnes", value: stats.transfersToday, icon: ArrowRightLeft, color: "text-teal-400", bar: "bg-teal-500" },
             ].map((item, i) => {

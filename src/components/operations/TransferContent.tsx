@@ -11,7 +11,7 @@ export default function TransferContent({ inventory }: { inventory: InventoryRec
   const [selected, setSelected] = useState<InventoryRecord | null>(null)
   const [qty, setQty] = useState(0)
   const [uih, setUih] = useState("")
-  const [notes, setNotes] = useState("Přesun do SAPu")
+  const [notes, setNotes] = useState("Přesun do Pick skladu")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const filtered = search.trim()
@@ -56,8 +56,8 @@ export default function TransferContent({ inventory }: { inventory: InventoryRec
           <ArrowRightLeft className="w-4 h-4" />
           <span className="text-xs font-bold uppercase tracking-widest">Operace</span>
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white">Přesun do SAP</h1>
-        <p className="text-slate-500 mt-1 text-sm">Vyberte HU a přesuňte ji do SAP skladu.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-white">Přesun do Pick skladu</h1>
+        <p className="text-slate-500 mt-1 text-sm">Vyberte HU a přesuňte ji do Pick skladu.</p>
       </div>
 
       {!selected ? (
@@ -136,7 +136,7 @@ export default function TransferContent({ inventory }: { inventory: InventoryRec
               <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500" />
               <div>
                 <p className="font-bold text-emerald-400 mb-1">Částečný přesun</p>
-                <p>Do SAPu se přesune <strong>{qty} ks</strong>. Na pozici zůstane <strong>{remaining} ks</strong>.</p>
+                <p>Do Pick skladu se přesune <strong>{qty} ks</strong>. Na pozici zůstane <strong>{remaining} ks</strong>.</p>
               </div>
             </div>
           )}

@@ -64,7 +64,7 @@ export default function DashboardContent({ stats, transferTrend }: DashboardCont
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Transfer Trend Chart */}
         <div className="glass-panel p-5">
-          <h3 className="text-sm font-bold text-white mb-4">Přesuny do SAPu — posledních 7 dní</h3>
+          <h3 className="text-sm font-bold text-white mb-4">Přesuny do Pick skladu — posledních 7 dní</h3>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={transferTrend} barSize={24}>

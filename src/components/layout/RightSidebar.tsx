@@ -15,8 +15,8 @@ const actionConfig: Record<string, { label: string; icon: any; color: string; do
   update_quantity: { label: "Úprava záznamu", icon: Edit2, color: "text-amber-400", dotColor: "bg-amber-500" },
   update_bin: { label: "Změna pozice", icon: Edit2, color: "text-teal-400", dotColor: "bg-teal-500" },
   update_note: { label: "Úprava poznámky", icon: Edit2, color: "text-slate-400", dotColor: "bg-slate-500" },
-  partial_transfer: { label: "Přesun do SAPu", icon: ArrowRightLeft, color: "text-emerald-400", dotColor: "bg-emerald-500" },
-  full_transfer: { label: "Přesun do SAPu", icon: ArrowRightLeft, color: "text-emerald-500", dotColor: "bg-emerald-500" },
+  partial_transfer: { label: "Přesun do Pick skladu", icon: ArrowRightLeft, color: "text-emerald-400", dotColor: "bg-emerald-500" },
+  full_transfer: { label: "Přesun do Pick skladu", icon: ArrowRightLeft, color: "text-emerald-500", dotColor: "bg-emerald-500" },
   archive: { label: "Archivace", icon: Archive, color: "text-red-400", dotColor: "bg-red-500" },
 }
 
@@ -85,10 +85,10 @@ export default function RightSidebar({ blockUtilization, transferTrend, recentAc
         </div>
       </div>
 
-      {/* ═══ Widget 2: Přesuny do SAPu (7 dní) ═══ */}
+      {/* ═══ Widget 2: Přesuny do Pick skladu (7 dní) ═══ */}
       <div className="glass-panel p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-white">Přesuny do SAPu (7 dní)</h3>
+          <h3 className="text-sm font-bold text-white">Přesuny do Pick skladu (7 dní)</h3>
           <span className="text-[10px] text-slate-500 font-medium bg-[#0a1628] px-2 py-0.5 rounded-md border border-white/[0.06]">
             7 dní
           </span>

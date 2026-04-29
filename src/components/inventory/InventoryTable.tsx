@@ -5,6 +5,7 @@ import { InventoryRecord } from "../../types/app"
 import { formatDate } from "../../lib/utils"
 import SearchBar from "./SearchBar"
 import { Edit2, ArrowRightLeft, Package, Archive, Download, ArrowUpDown, Filter, Plus, X, Columns, Bookmark, MoreHorizontal } from "lucide-react"
+import * as XLSX from "xlsx"
 import EditRecordModal from "../modals/EditRecordModal"
 import TransferModal from "../modals/TransferModal"
 import BulkArchiveModal from "../modals/BulkArchiveModal"
@@ -108,34 +109,41 @@ export default function InventoryTable({ initialData }: InventoryTableProps) {
     setSortConfig({ key, direction })
   }
 
-  const escapeCsvValue = (val: any) => {
-    if (val === null || val === undefined) return ""
-    const str = String(val)
-    if (str.includes(';') || str.includes('\n') || str.includes('"')) {
-      return `"${str.replace(/"/g, '""')}"`
-    }
-    return str
-  }
-
-  const exportToCSV = () => {
+  const exportToXLSX = () => {
     const headers = ["BLOCK", "Materiál", "HU", "Množství", "Pozice", "Poznámka", "Aktualizováno"]
     const rows = filteredData.map(r => [
-      escapeCsvValue(r.block), 
-      escapeCsvValue(r.material), 
-      escapeCsvValue(r.hu_number), 
-      escapeCsvValue(r.quantity), 
-      escapeCsvValue(r.bin_location), 
-      escapeCsvValue(r.notes || ""), 
-      escapeCsvValue(formatDate(r.updated_at))
+      r.block,
+      r.material,
+      r.hu_number,
+      r.quantity,
+      r.bin_location,
+      r.notes || "",
+      formatDate(r.updated_at)
     ])
-    
-    const csvContent = [headers.join(";"), ...rows.map(e => e.join(";"))].join("\n")
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `WMS_Export_${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
+
+    const wsData = [headers, ...rows]
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+
+    // Auto-width sloupců
+    ws['!cols'] = headers.map((_, i) => ({
+      wch: Math.max(headers[i].length, ...rows.map(r => String(r[i]).length)) + 2
+    }))
+
+    // Souhrn sheet
+    const summaryData = [
+      ["Počet HU", filteredData.length],
+      ["Celkové množství ks", filteredData.reduce((sum, r) => sum + r.quantity, 0)],
+      ["Aktivní filtry", [filterBlock, filterMaterial, filterHu, filterBin].filter(Boolean).join(", ") || "Žádné"],
+      ["Datum exportu", new Date().toLocaleString('cs-CZ')],
+    ]
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData)
+    wsSummary['!cols'] = [{ wch: 22 }, { wch: 30 }]
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Skladové zásoby")
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Souhrn")
+
+    XLSX.writeFile(wb, `BLOCK_STORAGE_Export_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const clearAllFilters = () => {
@@ -166,11 +174,11 @@ export default function InventoryTable({ initialData }: InventoryTableProps) {
           {/* Right: Action buttons */}
           <div className="flex items-center gap-2 flex-wrap">
             <button 
-              onClick={exportToCSV}
+              onClick={exportToXLSX}
               disabled={filteredData.length === 0}
               className="glass-button text-xs py-2 px-3 disabled:opacity-40"
             >
-              <Download className="w-3.5 h-3.5" /> Export CSV
+              <Download className="w-3.5 h-3.5" /> Export XLSX
             </button>
             <button className="glass-button text-xs py-2 px-3">
               <Columns className="w-3.5 h-3.5" /> Sloupce
@@ -355,7 +363,7 @@ export default function InventoryTable({ initialData }: InventoryTableProps) {
                       <td className="px-4 py-2.5 whitespace-nowrap text-right">
                         <div className="flex justify-end gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setEditingRecord(record)} className="p-1.5 text-blue-400 hover:bg-blue-500/20 rounded-md transition-colors" title="Upravit"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setTransferringRecord(record)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-md transition-colors" title="Přesun do SAPu"><ArrowRightLeft className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setTransferringRecord(record)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-md transition-colors" title="Přesun do Pick skladu"><ArrowRightLeft className="w-3.5 h-3.5" /></button>
                           <button className="p-1.5 text-slate-500 hover:bg-white/[0.06] rounded-md transition-colors" title="Více"><MoreHorizontal className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
@@ -395,15 +403,15 @@ export default function InventoryTable({ initialData }: InventoryTableProps) {
           <div className="w-px h-8 bg-white/[0.08]"></div>
           
           <button 
-            onClick={exportToCSV}
+            onClick={exportToXLSX}
             className="glass-button text-xs py-2 px-3"
           >
-            <Download className="w-3.5 h-3.5" /> Export CSV
+            <Download className="w-3.5 h-3.5" /> Export XLSX
           </button>
           
           <button className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 transition-all font-bold px-3 py-2 rounded-xl flex items-center gap-2 text-xs">
             <ArrowRightLeft className="w-3.5 h-3.5" /> 
-            Hromadný přesun do SAP
+            Hromadný přesun do Pick skladu
           </button>
           
           <button 

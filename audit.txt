@@ -1,0 +1,625 @@
+Rychlý verdikt
+
+Udělals velký posun dopředu. Aplikace už nepůsobí jako jednoduché MVP, ale jako základ moderního WMS dashboardu. Přibyl pevný sidebar, topbar, pravý analytický panel, samostatné stránky pro přidání, import, přesun do SAPu, hromadné akce, pohyby HU, import historii, dashboard, reporty a statistiky. Hlavní stránka už skládá KPI, skladovou tabulku a pravý sidebar s vytížeností bloků, trendem přesunů a posledními aktivitami.
+
+Největší pozitivum: UI/UX se výrazně zlepšilo. Největší riziko: datová integrita, audit log a bezpečnostní architektura jsou pořád slabší než vizuální vrstva.
+
+1. Co se výrazně zlepšilo
+1.1 Nový app shell: sidebar + topbar
+
+Root layout už používá pevný levý Sidebar, horní Topbar, dark mode a hlavní obsah odsazený o šířku sidebaru. To je velký krok k profesionálnímu enterprise layoutu.
+
+Sidebar je poměrně dobře strukturovaný podle kategorií:
+
+přehled,
+sklad,
+operace,
+historie,
+analytika.
+
+Obsahuje routy jako /add, /import, /transfer, /bulk, /history, /movements, /import-history, /dashboard, /reports a /statistics.
+
+Topbar má název aplikace, globální search input, ikony nastavení/notifikací a profil skladníka. Vizuálně to aplikaci posouvá hodně blízko návrhu „WMS control center“.
+
+1.2 Dashboard je mnohem bohatší
+
+Hlavní stránka teď paralelně načítá:
+
+aktivní inventory,
+KPI data,
+vytíženost bloků,
+trend přesunů,
+poslední aktivity.
+
+Pak vykresluje KPI karty, hlavní tabulku a pravý sidebar.
+
+Pravý sidebar přidává:
+
+heatmapu bloků BLOCK-01 až BLOCK-30,
+graf přesunů za 7 dní,
+feed posledních aktivit.
+
+To je přesně správný směr pro skladový dashboard.
+
+1.3 Samostatná analytická sekce
+
+Přibyla /dashboard stránka, která bere getDashboardStats a getTransferTrend a vykresluje DashboardContent.
+
+DashboardContent obsahuje:
+
+souhrnné karty,
+graf přesunů do SAPu,
+pie chart top materiálů,
+30denní aktivitu,
+heatmapu bloků.
+
+Dále přibyly i stránky /reports a /statistics, každá s vlastní komponentou. Reporty mají přehled skladových zásob, přesuny do SAPu a import operace. Statistiky zobrazují rozložení aktivních/archivovaných HU, měsíční operace, bloky a top materiály.
+
+1.4 Hlavní tabulka je znatelně lepší
+
+InventoryTable už má:
+
+globální search,
+filtry podle bloku, materiálu, HU a pozice,
+aktivní filter badges,
+reset filtrů,
+řazení sloupců,
+výběr více řádků,
+bulk action bar,
+export CSV,
+otevření add/edit/transfer/bulk modalů.
+
+Důležité: v předchozím auditu jsem upozorňoval, že sort může mutovat původní initialData. To už je opravené — processedData se vytváří přes kopii [...].
+
+CSV export už má escapeCsvValue, takže řeší středníky, nové řádky a uvozovky. To je také dobrá oprava.
+
+1.5 Import má samostatnou stránku a podporu CSV/XLSX
+
+/import má vlastní stránku s uploadem .csv, .xlsx, .xls, UIH, volitelným vynuceným blokem a strategií pro duplicity.
+
+Serverová importní akce používá papaparse pro CSV a xlsx pro Excel. To je velký posun proti ručnímu string parseru.
+
+1.6 Přibyla samostatná stránka pro přesun do SAPu
+
+/transfer načte aktivní inventář a vykreslí TransferContent.
+
+Workflow je použitelné:
+
+uživatel vyhledá HU/materiál/block,
+vybere záznam,
+zadá množství,
+vidí rozdíl mezi částečným a úplným přesunem,
+zadá UIH,
+potvrdí přesun.
+
+Tohle je lepší než řešit vše jen přes malý modal v tabulce.
+
+1.7 Přibyla samostatná stránka pro hromadné akce
+
+/bulk načítá aktivní inventář a vykresluje BulkContent.
+
+Umožňuje:
+
+hledání,
+filtr podle bloku,
+výběr záznamů,
+hromadnou archivaci s UIH a důvodem.
+
+To je dobrý provozní nástroj.
+
+2. Největší aktuální rizika
+P0 — Kritické: Supabase klient má stále public anon key a placeholder fallback
+
+src/lib/supabase.ts používá NEXT_PUBLIC_SUPABASE_URL a NEXT_PUBLIC_SUPABASE_ANON_KEY, navíc s fallbackem na placeholder hodnoty.
+
+To je problém ze dvou důvodů:
+
+aplikace může běžet i se špatnou konfigurací místo toho, aby jasně spadla,
+serverové zápisy používají stejný veřejný Supabase klient jako klientské části.
+
+Doporučení:
+
+src/lib/supabase/
+  browser.ts
+  server.ts
+  admin.ts
+
+A odstranit fallback:
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL")
+}
+
+Pro zápisové server actions bych nedoporučil spoléhat na NEXT_PUBLIC_* klienta. Minimálně oddělit serverový klient. Pokud později přidáš login, řešit přes Supabase Auth + RLS.
+
+P0 — Kritické: audit log stále není atomický
+
+V inventory.ts je logAction, která zapisuje do history_logs. Pokud zápis selže, chyba se jen vypíše do konzole.
+
+To znamená, že skladová změna může proběhnout, ale audit log ne. U WMS aplikace je to špatně.
+
+Správné pravidlo:
+
+Pokud se nepodaří zapsat audit log, nesmí se uložit ani změna skladu.
+
+Nejlepší řešení: přesunout zápisové operace do PostgreSQL RPC funkcí, kde se inventory změna a audit log provedou v jedné transakci.
+
+P0 — Kritické: přesun do SAPu pořád není atomický
+
+transferToSAP:
+
+načte starý záznam,
+zkontroluje množství,
+spočítá zůstatek,
+provede update,
+zapíše historii.
+
+To funguje při jednom uživateli. Při souběžné práci dvou skladníků ale může vzniknout race condition.
+
+Příklad:
+
+HU má 100 ks.
+Uživatel A přesune 80 ks.
+Uživatel B současně přesune 50 ks.
+Oba mohou vycházet ze stejného starého množství 100 ks.
+
+Řešení:
+
+select *
+from inventory
+where id = target_id
+for update;
+
+nebo podmíněný update:
+
+update inventory
+set quantity = quantity - transfer_quantity
+where id = target_id
+  and status = 'active'
+  and quantity >= transfer_quantity;
+
+Ale ideálně jako RPC funkce v databázi.
+
+P0 — Kritické: undo stále porušuje původní business pravidla
+
+undoHistoryAction nastavuje status: 'active' a komentář v kódu říká, že undo vždy vrací záznam do aktivního stavu.
+
+To je v rozporu s původním pravidlem:
+
+Archivovaná HU se nesmí oživovat. Pokud se fyzicky vrátí, má vzniknout nový aktivní záznam.
+
+Aktuální undo může:
+
+oživit archivované HU,
+narazit na duplicitu aktivní HU,
+přepsat stav, který už byl mezitím změněn,
+vrátit starou akci uprostřed historie bez kontroly návaznosti.
+
+Doporučení: undo nepoužívat jako přepsání stavu. Zaveď kompenzační akce:
+
+undo_action
+correction_quantity
+correction_bin
+restore_as_new_record
+
+Undo by mělo být povolené jen pro poslední akci daného inventory záznamu, a vždy musí zapsat nový audit log.
+
+P0 — Kritické: chybí verzované databázové migrace
+
+Na standardní cestě supabase/migrations/001_initial_schema.sql jsem soubor nenašel. Pokud máš SQL schéma jen ručně v Supabase editoru, projekt není reprodukovatelný.
+
+To je u této aplikace zásadní problém. TypeScript typy popisují tabulky inventory, history_logs a view kpi_dashboard , ale typy samy o sobě nevynucují:
+
+partial unique index pro aktivní HU,
+check constraint pro BLOCK-01 až BLOCK-30,
+check constraint pro quantity >= 0,
+trigger na updated_at,
+indexy pro search,
+RLS policies,
+auditní integritu.
+
+Doporučená struktura:
+
+supabase/
+  migrations/
+    001_initial_schema.sql
+    002_indexes_and_kpis.sql
+    003_inventory_rpc.sql
+    004_rls_policies.sql
+3. Audit datové vrstvy
+3.1 TypeScript typy jsou pořád ruční a úzké
+
+database.types.ts definuje inventory, history_logs a kpi_dashboard. history_logs.action má pevný union typ akcí: create, import, update_quantity, update_bin, update_note, partial_transfer, full_transfer, archive.
+
+Chybí ale akce a metadata pro nové workflow:
+
+bulk_archive,
+undo,
+compensation,
+import_overwrite,
+import_skip,
+manual_correction,
+move_bin,
+restore_as_new,
+metadata,
+source,
+import_batch_id,
+correlation_id.
+
+Doporučení: audit log rozšířit.
+
+Lepší audit model:
+
+history_logs
+  id
+  inventory_id
+  hu_number
+  material
+  block
+  bin_location
+  uih
+  action
+  source
+  old_value jsonb
+  new_value jsonb
+  metadata jsonb
+  correlation_id
+  import_batch_id
+  notes
+  created_at
+3.2 Hodně server actions používá as any
+
+V inventory.ts jsou Supabase operace často přes (supabase as any).
+
+To odstraňuje výhody TypeScriptu. V aplikaci, kde se pracuje se skladem, audit logem a množstvím, bych to postupně odstranil.
+
+Doporučení:
+
+generovat typy přes Supabase CLI,
+nepoužívat ručně psané DB typy, pokud nemusíš,
+oddělit Insert/Update payload typy,
+nepoužívat any u auditních payloadů.
+4. Audit importu
+
+Import je lepší, ale pořád bych ho nepovažoval za produkčně robustní.
+
+Co je dobré
+
+Import umí CSV i Excel. CSV čte přes Papa.parse, Excel přes xlsx.read, a u Excelu projde všechny listy v sešitu.
+
+Umí:
+
+detekovat fallback block z textu,
+použít ručně vynucený block,
+rozpoznat HU přes regex,
+rozpoznat pozici přes regex,
+kontrolovat existující aktivní HU,
+přeskakovat duplicity,
+přepsat existující záznamy podle strategie.
+Co je rizikové
+4.1 Vynucený BLOCK není dost validovaný
+
+Uživatel může zadat forceBlock. Kód ho použije jako finální block, ale serverová importní akce ho explicitně nevaliduje stejným způsobem jako UI formulář.
+
+Pokud v databázi není check constraint, může projít nevalidní hodnota.
+
+4.2 Množství může skončit jako 0
+
+Pokud import nenajde množství, nastaví:
+
+quantity: qtyStr ? parseInt(qtyStr, 10) : 0
+
+To je nebezpečné. HU s množstvím 0 by se neměla importovat jako aktivní záznam, pokud to není explicitně potvrzený edge case.
+
+Doporučení: chybějící množství = validační chyba, ne default 0.
+
+4.3 Import je stále heuristický
+
+Materiál se odhaduje z „nejdelšího zbývajícího textu“. To může fungovat u jednoho typu exportu, ale ne u různých Excelů.
+
+Lepší řešení:
+
+nahrát soubor,
+detekovat header row,
+zobrazit preview,
+ručně nebo automaticky namapovat sloupce,
+validovat,
+až potom importovat.
+4.4 Chybí import_batches
+
+Import historie je dnes odvozena z jednotlivých history_logs s akcí import. /import-history načte getImportHistory, které bere posledních 500 import logů.
+
+To ale není skutečná historie importních dávek. Chybí entita:
+
+import_batches
+  id
+  file_name
+  uploaded_by_uih
+  strategy
+  total_rows
+  success_count
+  skipped_count
+  error_count
+  created_at
+
+A k tomu:
+
+import_errors
+  id
+  import_batch_id
+  row_number
+  hu_number
+  reason
+  raw_row jsonb
+
+Pak budeš schopný dohledat celý import jako jednu operaci.
+
+5. Audit UI/UX
+5.1 Vizuální směr je mnohem lepší
+
+Globální CSS už definuje konzistentní dark theme, surface barvy, panel systém, inputy, buttony, KPI gradienty, block grid, filter badges, activity dots, position dots, scrollbary a navigační styly.
+
+To je dobrý základ.
+
+5.2 Pořád chybí skutečná UI komponentová knihovna
+
+Teď máš globální CSS utility jako glass-panel, glass-input, glass-button, glass-button-primary, ale komponenty pořád často ručně skládají styly.
+
+Doporučuji vytvořit:
+
+src/components/ui/
+  Button.tsx
+  Input.tsx
+  Select.tsx
+  Textarea.tsx
+  Dialog.tsx
+  Card.tsx
+  Badge.tsx
+  DataTable.tsx
+  EmptyState.tsx
+  Skeleton.tsx
+  Tooltip.tsx
+  Dropdown.tsx
+
+Pak bude každá stránka vypadat konzistentně.
+
+5.3 Modály jsou lepší, ale pořád ne ideální
+
+ActionModal už má varianty blue, indigo, green, cyan, red, amber a používá jen horní barevnou linku podle typu akce. To je výrazně lepší než dřívější příliš barevné modály.
+
+Pořád ale chybí:
+
+role="dialog",
+aria-modal="true",
+focus trap,
+scroll lock,
+zavření klikem na overlay,
+návrat focusu po zavření,
+sticky footer u delších formulářů,
+jednotný DialogHeader, DialogBody, DialogFooter.
+
+Doporučení: udělat nový Dialog systém.
+
+Dialog
+  DialogHeader
+    icon
+    title
+    description
+  DialogBody
+    FormSection
+  DialogFooter
+    cancel
+    primary action
+5.4 KPI karty vypadají dobře, ale část dat je falešná
+
+KPICards má hardcoded trendy typu +5.2%, +12.4%, +8.1%, progress 87% a statický sparkline SVG.
+
+Designově to vypadá dobře, ale datově to může být zavádějící.
+
+Doporučení:
+
+buď trend skrýt,
+nebo ho počítat z reálných dat,
+kapacitu bloku počítat z tabulky blocks,
+sparkline napojit na skutečný trend.
+5.5 Topbar search je zatím jen vizuální
+
+Topbar má search input s placeholderem a ⌘K, ale není napojený na command palette ani skutečné globální hledání.
+
+Doporučení:
+
+buď ho zatím skrýt,
+nebo implementovat Cmd/Ctrl + K,
+umožnit hledat HU a otevřít detail záznamu,
+přidat akce: „Přidat záznam“, „Import“, „Přesun do SAPu“, „Historie HU“.
+6. Audit tabulek a filtrování
+Co je dobré
+
+Inventory tabulka má už sloupcové filtry, aktivní filter badges a reset filtrů. To přesně odpovídá tomu, co jsi chtěl: filtrovat například jen podle pozice nebo materiálu.
+
+Co bych doplnil
+Sticky header
+U dlouhé tabulky musí být hlavička pořád vidět.
+Sticky action column
+Akce napravo by měly zůstat viditelné při horizontálním scrollu.
+Column visibility
+Tlačítko „Sloupce“ existuje, ale není napojené.
+Saved views
+Tlačítko „Uložené pohledy“ existuje, ale není napojené.
+Server-side pagination
+Teď se načte celé aktivní inventory a filtruje se na klientovi. getActiveInventory bere všechny aktivní záznamy a řadí podle updated_at. To je v pořádku pro malé množství dat, ale časem bude potřeba server-side stránkování.
+Detail HU drawer
+Klik na řádek by měl otevřít boční panel s detailem HU, historií, posledními pohyby a akcemi.
+7. Audit historie
+
+Historie pořád načítá posledních 1000 záznamů bez server-side filtrů. HistoryTable filtruje na klientovi podle HU/UIH/poznámky a typu akce.
+
+To stačí pro demo, ale ne pro dlouhodobý provoz.
+
+Doporučení:
+
+server-side filtry,
+stránkování,
+filtr datum od/do,
+filtr materiálu,
+filtr bloku,
+export historie podle filtrů,
+detailní timeline jedné HU.
+
+Pohyby HU a import historie jsou dobrý nový krok, ale také pracují s klientským filtrováním nad omezeným datasetem.
+
+8. Audit operací
+Přidání záznamu
+
+/add má dobře rozdělený formulář na identifikaci, skladování a ověření. Validuje block formát na klientu a vyžaduje UIH.
+
+Riziko: serverová funkce addInventoryRecord validuje jen UIH a quantity < 0. Nevaliduje server-side block formát, HU formát, materiál, pozici, prázdné stringy.
+
+Doporučení: přidat Zod schéma a použít ho v server action.
+
+Editace záznamu
+
+Edit modal vyžaduje UIH a důvod úpravy, což je správně.
+
+Rizika:
+
+dovoluje quantity = 0,
+server nehlídá status = active,
+update není transakční,
+audit log není povinný,
+poznámky se řetězí do jednoho textového pole místo samostatných auditních poznámek.
+
+Doporučení: pokud má aktivní záznam klesnout na 0, měl by být archivován řízenou operací, ne obyčejnou editací.
+
+Přesun do SAPu
+
+Samostatná stránka i modal mají dobré preview částečného/úplného přesunu.
+
+Riziko zůstává v server action: není atomická a audit není povinný.
+
+Hromadná archivace
+
+UI je dobré: vyžaduje důvod a UIH. Modal také jasně upozorňuje, že jde o nebezpečnou operaci.
+
+Rizika:
+
+serverová funkce update provede hromadně a logy vkládá až poté,
+pokud log insert selže, archivace už proběhla,
+nekontroluje status = active,
+vrací úspěch podle počtu vybraných IDs, ne podle skutečného počtu aktualizovaných řádků.
+9. Technický audit projektu
+Dependencies
+
+package.json obsahuje rozumný stack: Next 14, React 18, Supabase JS, Framer Motion, Lucide, PapaParse, Recharts, Sonner, Tailwind Merge, XLSX.
+
+Co bych doplnil:
+
+zod
+@tanstack/react-table
+@tanstack/react-virtual
+date-fns
+cmdk
+
+Volitelně později:
+
+playwright
+vitest
+@testing-library/react
+TypeScript config
+
+tsconfig.json má strict: true, což je správně. Ale allowJs: true bych u tohoto projektu raději vypnul, pokud nemáš důvod ho držet. Alias @/* míří na ./*, ne na ./src/*.
+
+Doporučení:
+
+"allowJs": false,
+"paths": {
+  "@/*": ["./src/*"]
+}
+Tailwind config
+
+Tailwind má vlastní barvy a grid 15, který se používá pro blokovou heatmapu. To je v pořádku.
+
+Doporučil bych ale postupně přesunout barvy do design tokens a méně používat tvrdé HEX hodnoty přímo v komponentách.
+
+10. Doporučené priority
+P0 — nejdřív opravit
+Přidat Supabase migrace
+tabulky,
+constraints,
+indexes,
+partial unique index,
+triggers,
+RLS.
+Přepsat zápisové akce na transakční RPC
+create,
+update,
+transfer,
+bulk archive,
+import,
+undo/compensation.
+Zrušit nebezpečné undo
+nahradit kompenzačními akcemi.
+Oddělit Supabase klienty
+browser,
+server,
+admin.
+Přidat server-side validaci přes Zod
+žádný zápis bez serverové validace.
+P1 — pak zlepšit provozní funkce
+Import wizard
+upload,
+preview,
+mapování sloupců,
+validace,
+potvrzení.
+Import batches
+jedna dávka = jeden auditovatelný objekt.
+Server-side filtrování historie
+HU,
+UIH,
+akce,
+datum,
+block,
+materiál.
+Detail HU drawer
+aktuální stav,
+timeline,
+poznámky,
+akce.
+Skutečný command palette
+Ctrl/Cmd + K.
+P2 — design polish
+UI komponentová knihovna
+Button,
+Input,
+Dialog,
+Card,
+Badge,
+DataTable.
+Zpřístupnit modály
+ARIA,
+focus trap,
+scroll lock.
+Napojit KPI trendy na reálná data
+žádné hardcoded +5.2%.
+Implementovat tlačítka Sloupce a Uložené pohledy
+teď jsou vizuální, ale nefunkční.
+Sticky header a sticky action column
+u hlavní tabulky.
+11. Celkové hodnocení
+
+Aktuální update je velký krok správným směrem. Vizuálně se aplikace posunula z jednoduchého interního nástroje na moderní tmavý WMS dashboard. Sidebar, topbar, pravý analytický panel, nové stránky, grafy, heatmapy a lepší tabulky jsou velmi dobrý směr.
+
+Nejdůležitější závěr ale zůstává:
+
+UI už je o úroveň výš než datová a bezpečnostní architektura. Teď bych další energii nedával primárně do nových obrazovek, ale do databázových migrací, transakcí, validací a bezpečného auditu.
+
+Pořadí, které bych zvolil:
+
+Supabase migrace.
+RPC transakce pro kritické operace.
+Zod validace.
+Bezpečné undo jako kompenzační akce.
+Import batches + import wizard.
+Profesionální datagrid s detail drawerem.
+UI komponentový systém.

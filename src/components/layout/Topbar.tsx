@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Search, Settings, User } from "lucide-react"
+import { Search, Settings } from "lucide-react"
 
 export default function Topbar() {
   return (
@@ -8,8 +8,8 @@ export default function Topbar() {
       {/* Left — Page Title */}
       <div className="flex items-center gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white leading-tight">Řídicí centrum skladu</h2>
-          <p className="text-xs text-slate-500 font-medium">Přehled a správa skladových operací</p>
+          <h2 className="text-lg font-bold text-white leading-tight">BLOCK STORAGE</h2>
+          <p className="text-xs text-slate-500 font-medium">Přehled a správa externího skladu</p>
         </div>
       </div>
 
@@ -34,13 +34,6 @@ export default function Topbar() {
       <div className="flex items-center gap-3">
         <button className="p-2 text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] rounded-lg transition-all">
           <Settings className="w-4.5 h-4.5" />
-        </button>
-        
-        <button className="p-2 text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] rounded-lg transition-all relative">
-          <Bell className="w-4.5 h-4.5" />
-          <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center shadow-[0_0_6px_rgba(239,68,68,0.6)]">
-            3
-          </span>
         </button>
         
         <div className="h-7 w-px bg-white/[0.08] mx-1"></div>
