@@ -11,6 +11,7 @@ interface DashboardClientProps {
   blockUtilization: Record<string, number>
   transferTrend: { date: string; count: number }[]
   recentActivities: any[]
+  lastChecks: Record<string, { result: string; checked_at: string }>
 }
 
 export default function DashboardClient({
@@ -19,6 +20,7 @@ export default function DashboardClient({
   blockUtilization,
   transferTrend,
   recentActivities,
+  lastChecks,
 }: DashboardClientProps) {
   const [externalBlockFilter, setExternalBlockFilter] = useState<string>("")
 
@@ -36,6 +38,7 @@ export default function DashboardClient({
           <InventoryTable 
             initialData={inventoryData} 
             externalBlockFilter={externalBlockFilter}
+            lastChecks={lastChecks}
           />
         </div>
 

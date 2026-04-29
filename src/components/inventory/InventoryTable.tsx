@@ -4,17 +4,19 @@ import { useState, useMemo, useEffect } from "react"
 import { InventoryRecord } from "../../types/app"
 import { formatDate } from "../../lib/utils"
 import SearchBar from "./SearchBar"
-import { Edit2, ArrowRightLeft, Package, Archive, Download, ArrowUpDown, Filter, Plus, X, Columns, Bookmark, MoreHorizontal, MessageSquare } from "lucide-react"
+import { Edit2, ArrowRightLeft, Package, Archive, Download, ArrowUpDown, Filter, Plus, X, Columns, Bookmark, MoreHorizontal, MessageSquare, ClipboardCheck } from "lucide-react"
 import * as XLSX from "xlsx"
 import EditRecordModal from "../modals/EditRecordModal"
 import TransferModal from "../modals/TransferModal"
 import BulkArchiveModal from "../modals/BulkArchiveModal"
 import AddRecordModal from "../modals/AddRecordModal"
 import NoteModal from "../modals/NoteModal"
+import InventoryCheckModal from "../modals/InventoryCheckModal"
 
 interface InventoryTableProps {
   initialData: InventoryRecord[]
   externalBlockFilter?: string
+  lastChecks?: Record<string, { result: string; checked_at: string }>
 }
 
 type SortConfig = {
@@ -33,7 +35,7 @@ function getPositionColor(pos: string): string {
   return "bg-red-500"
 }
 
-export default function InventoryTable({ initialData, externalBlockFilter }: InventoryTableProps) {
+export default function InventoryTable({ initialData, externalBlockFilter, lastChecks = {} }: InventoryTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   
   const [filterBlock, setFilterBlock] = useState(externalBlockFilter || "")
@@ -50,6 +52,7 @@ export default function InventoryTable({ initialData, externalBlockFilter }: Inv
   const [isBulkArchiveOpen, setIsBulkArchiveOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [noteRecord, setNoteRecord] = useState<InventoryRecord | null>(null)
+  const [checkRecord, setCheckRecord] = useState<InventoryRecord | null>(null)
 
   // Sync external block filter (from block drawer click)
   useEffect(() => {
@@ -353,6 +356,7 @@ export default function InventoryTable({ initialData, externalBlockFilter }: Inv
                 <th onClick={() => handleSort('quantity')} className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer hover:text-blue-400 transition-colors">Množství <SortIcon /></th>
                 <th onClick={() => handleSort('bin_location')} className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer hover:text-blue-400 transition-colors">Pozice <SortIcon /></th>
                 <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Poznámka</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Inventura</th>
                 <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Akce</th>
               </tr>
             </thead>
@@ -400,6 +404,35 @@ export default function InventoryTable({ initialData, externalBlockFilter }: Inv
                           </span>
                         )}
                       </td>
+                      {/* Inventura column */}
+                      <td className="px-4 py-2.5 text-center whitespace-nowrap">
+                        {lastChecks[record.id] ? (
+                          <button
+                            onClick={() => setCheckRecord(record)}
+                            className="inline-flex flex-col items-center gap-0.5 cursor-pointer group/check"
+                            title={`Poslední inventura: ${lastChecks[record.id].result}`}
+                          >
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                              lastChecks[record.id].result === 'OK' 
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
+                                : 'bg-red-500/15 text-red-400 border border-red-500/30'
+                            }`}>
+                              {lastChecks[record.id].result}
+                            </span>
+                            <span className="text-[9px] text-slate-600 group-hover/check:text-slate-400 transition-colors">
+                              {new Date(lastChecks[record.id].checked_at).toLocaleDateString('cs-CZ')}
+                            </span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setCheckRecord(record)}
+                            className="p-1 text-slate-600 hover:text-cyan-400 transition-colors"
+                            title="Spustit inventuru"
+                          >
+                            <ClipboardCheck className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-right">
                         <div className="flex justify-end gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setEditingRecord(record)} className="p-1.5 text-blue-400 hover:bg-blue-500/20 rounded-md transition-colors" title="Upravit"><Edit2 className="w-3.5 h-3.5" /></button>
@@ -412,7 +445,7 @@ export default function InventoryTable({ initialData, externalBlockFilter }: Inv
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-20 text-center">
+                  <td colSpan={9} className="px-6 py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="p-4 bg-[#0a1628] rounded-2xl border border-white/[0.06]">
                         <Package className="w-8 h-8 text-slate-700" />
@@ -476,6 +509,7 @@ export default function InventoryTable({ initialData, externalBlockFilter }: Inv
       <BulkArchiveModal isOpen={isBulkArchiveOpen} onClose={() => setIsBulkArchiveOpen(false)} selectedIds={Array.from(selectedIds)} onSuccess={() => setSelectedIds(new Set())} />
       <AddRecordModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
       <NoteModal isOpen={!!noteRecord} onClose={() => setNoteRecord(null)} record={noteRecord} />
+      <InventoryCheckModal isOpen={!!checkRecord} onClose={() => setCheckRecord(null)} record={checkRecord} />
     </div>
   )
 }
