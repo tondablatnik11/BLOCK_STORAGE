@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { InventoryRecord } from "../../types/app"
 import { formatDate } from "../../lib/utils"
 import SearchBar from "./SearchBar"
@@ -13,6 +13,7 @@ import AddRecordModal from "../modals/AddRecordModal"
 
 interface InventoryTableProps {
   initialData: InventoryRecord[]
+  externalBlockFilter?: string
 }
 
 type SortConfig = {
@@ -31,10 +32,10 @@ function getPositionColor(pos: string): string {
   return "bg-red-500"
 }
 
-export default function InventoryTable({ initialData }: InventoryTableProps) {
+export default function InventoryTable({ initialData, externalBlockFilter }: InventoryTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   
-  const [filterBlock, setFilterBlock] = useState("")
+  const [filterBlock, setFilterBlock] = useState(externalBlockFilter || "")
   const [filterMaterial, setFilterMaterial] = useState("")
   const [filterHu, setFilterHu] = useState("")
   const [filterBin, setFilterBin] = useState("")
@@ -47,6 +48,13 @@ export default function InventoryTable({ initialData }: InventoryTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkArchiveOpen, setIsBulkArchiveOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
+
+  // Sync external block filter (from block drawer click)
+  useEffect(() => {
+    if (externalBlockFilter !== undefined) {
+      setFilterBlock(externalBlockFilter)
+    }
+  }, [externalBlockFilter])
   const [showFilters, setShowFilters] = useState(true)
 
   // Unique values for dropdown filters
@@ -167,8 +175,24 @@ export default function InventoryTable({ initialData }: InventoryTableProps) {
           <div className="flex items-center gap-4">
             <div>
               <h2 className="text-base font-bold text-white">Skladové zásoby</h2>
-              <span className="text-xs text-slate-500">{filteredData.length.toLocaleString('cs-CZ')} záznamů</span>
+              <span className="text-xs text-slate-500">{initialData.length.toLocaleString('cs-CZ')} záznamů</span>
             </div>
+            
+            {/* Filtered summary */}
+            {(hasActiveFilters || searchTerm) && (
+              <div className="flex items-center gap-3 bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-1.5">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-3 h-3 text-blue-400" />
+                  <span className="text-xs font-bold text-blue-300">
+                    {filteredData.length} HU
+                  </span>
+                  <span className="text-xs text-blue-400/60">/</span>
+                  <span className="text-xs font-bold text-blue-300">
+                    {filteredData.reduce((sum, r) => sum + r.quantity, 0).toLocaleString('cs-CZ')} ks
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Right: Action buttons */}

@@ -79,6 +79,75 @@ export async function getBlockUtilization(): Promise<Record<string, number>> {
 }
 
 // ═══════════════════════════════════════════════
+// DETAIL BLOKU — Souhrn materiálů v jednom bloku
+// ═══════════════════════════════════════════════
+export interface BlockMaterialItem {
+  material: string
+  hu_count: number
+  total_quantity: number
+  bin_count: number
+  last_updated: string
+}
+
+export interface BlockSummary {
+  block: string
+  total_hu: number
+  total_quantity: number
+  unique_materials: number
+  materials: BlockMaterialItem[]
+}
+
+export async function getBlockMaterialSummary(block: string): Promise<BlockSummary> {
+  const { data, error } = await (supabase as any)
+    .from('inventory')
+    .select('material, quantity, bin_location, updated_at')
+    .eq('status', 'active')
+    .eq('block', block)
+    .order('updated_at', { ascending: false })
+
+  if (error || !data) {
+    return { block, total_hu: 0, total_quantity: 0, unique_materials: 0, materials: [] }
+  }
+
+  const materialMap = new Map<string, { hu_count: number; total_quantity: number; bins: Set<string>; last_updated: string }>()
+
+  data.forEach((row: any) => {
+    const existing = materialMap.get(row.material)
+    if (existing) {
+      existing.hu_count++
+      existing.total_quantity += row.quantity
+      existing.bins.add(row.bin_location)
+      if (row.updated_at > existing.last_updated) existing.last_updated = row.updated_at
+    } else {
+      materialMap.set(row.material, {
+        hu_count: 1,
+        total_quantity: row.quantity,
+        bins: new Set([row.bin_location]),
+        last_updated: row.updated_at
+      })
+    }
+  })
+
+  const materials: BlockMaterialItem[] = Array.from(materialMap.entries())
+    .map(([material, info]) => ({
+      material,
+      hu_count: info.hu_count,
+      total_quantity: info.total_quantity,
+      bin_count: info.bins.size,
+      last_updated: info.last_updated
+    }))
+    .sort((a, b) => b.hu_count - a.hu_count)
+
+  return {
+    block,
+    total_hu: data.length,
+    total_quantity: data.reduce((sum: number, r: any) => sum + r.quantity, 0),
+    unique_materials: materialMap.size,
+    materials
+  }
+}
+
+// ═══════════════════════════════════════════════
 // PŘESUNY DO PICK SKLADU — Denní agregace za posledních 7 dní
 // ═══════════════════════════════════════════════
 export async function getTransferTrend(): Promise<{ date: string; count: number }[]> {

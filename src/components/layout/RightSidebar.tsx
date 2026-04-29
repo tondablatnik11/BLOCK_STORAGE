@@ -1,12 +1,15 @@
 "use client"
 
+import { useState } from "react"
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 import { ArrowRightLeft, Upload, Edit2, Archive, PackagePlus, Eye } from "lucide-react"
+import BlockDetailDrawer from "./BlockDetailDrawer"
 
 interface RightSidebarProps {
   blockUtilization: Record<string, number>
   transferTrend: { date: string; count: number }[]
   recentActivities: any[]
+  onFilterBlock?: (block: string) => void
 }
 
 const actionConfig: Record<string, { label: string; icon: any; color: string; dotColor: string }> = {
@@ -53,7 +56,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null
 }
 
-export default function RightSidebar({ blockUtilization, transferTrend, recentActivities }: RightSidebarProps) {
+export default function RightSidebar({ blockUtilization, transferTrend, recentActivities, onFilterBlock }: RightSidebarProps) {
+  const [selectedBlock, setSelectedBlock] = useState<string | null>(null)
+
   // Generate block grid 01-30
   const blocks = Array.from({ length: 30 }, (_, i) => {
     const num = String(i + 1).padStart(2, "0")
@@ -63,95 +68,105 @@ export default function RightSidebar({ blockUtilization, transferTrend, recentAc
   })
 
   return (
-    <aside className="w-[280px] shrink-0 space-y-4">
-      {/* ═══ Widget 1: Vytíženost bloků ═══ */}
-      <div className="glass-panel p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-white">Vytíženost bloků</h3>
-          <button className="text-[10px] text-blue-400 font-medium hover:text-blue-300 transition-colors">
-            Zobrazit všechny
-          </button>
+    <>
+      <aside className="w-[280px] shrink-0 space-y-4">
+        {/* ═══ Widget 1: Vytíženost bloků ═══ */}
+        <div className="glass-panel p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-white">Vytíženost bloků</h3>
+          </div>
+          <div className="grid grid-cols-6 gap-1.5">
+            {blocks.map((block) => (
+              <button
+                key={block.num}
+                onClick={() => setSelectedBlock(block.blockName)}
+                className={`block-cell ${getBlockLevel(block.count)} cursor-pointer hover:ring-1 hover:ring-blue-400/40 transition-all flex flex-col items-center justify-center leading-none`}
+                title={`${block.blockName}: ${block.count} HU`}
+              >
+                <span className="text-[11px] font-bold">{block.num}</span>
+                {block.count > 0 && (
+                  <span className="text-[8px] text-slate-400 mt-0.5">{block.count}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="grid grid-cols-6 gap-1.5">
-          {blocks.map((block) => (
-            <div
-              key={block.num}
-              className={`block-cell ${getBlockLevel(block.count)}`}
-              title={`${block.blockName}: ${block.count} HU`}
-            >
-              {block.num}
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* ═══ Widget 2: Přesuny do Pick skladu (7 dní) ═══ */}
-      <div className="glass-panel p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-white">Přesuny do Pick skladu (7 dní)</h3>
-          <span className="text-[10px] text-slate-500 font-medium bg-[#0a1628] px-2 py-0.5 rounded-md border border-white/[0.06]">
-            7 dní
-          </span>
+        {/* ═══ Widget 2: Přesuny do Pick skladu (7 dní) ═══ */}
+        <div className="glass-panel p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-white">Přesuny do Pick skladu (7 dní)</h3>
+            <span className="text-[10px] text-slate-500 font-medium bg-[#0a1628] px-2 py-0.5 rounded-md border border-white/[0.06]">
+              7 dní
+            </span>
+          </div>
+          <div className="h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={transferTrend} barSize={18}>
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 9, fill: '#64748b' }} 
+                  axisLine={false} 
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fontSize: 9, fill: '#64748b' }} 
+                  axisLine={false} 
+                  tickLine={false}
+                  width={25}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={false} />
+                <Bar 
+                  dataKey="count" 
+                  fill="#10b981" 
+                  radius={[4, 4, 0, 0]}
+                  className="cursor-pointer"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={transferTrend} barSize={18}>
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 9, fill: '#64748b' }} 
-                axisLine={false} 
-                tickLine={false}
-              />
-              <YAxis 
-                tick={{ fontSize: 9, fill: '#64748b' }} 
-                axisLine={false} 
-                tickLine={false}
-                width={25}
-              />
-              <Tooltip content={<CustomTooltip />} cursor={false} />
-              <Bar 
-                dataKey="count" 
-                fill="#10b981" 
-                radius={[4, 4, 0, 0]}
-                className="cursor-pointer"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
 
-      {/* ═══ Widget 3: Poslední aktivity ═══ */}
-      <div className="glass-panel p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-white">Poslední aktivity</h3>
-          <button className="text-[10px] text-blue-400 font-medium hover:text-blue-300 transition-colors">
-            Zobrazit vše
-          </button>
-        </div>
-        <div className="space-y-3">
-          {recentActivities.slice(0, 5).map((activity, idx) => {
-            const config = actionConfig[activity.action] || { label: activity.action, icon: Eye, color: "text-slate-400", dotColor: "bg-slate-500" }
-            return (
-              <div key={activity.id || idx} className="flex items-start gap-2.5">
-                <div className={`activity-dot ${config.dotColor} mt-1.5 shrink-0`}></div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-semibold ${config.color} leading-tight`}>{config.label}</p>
-                  <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
-                    HU:{activity.hu_number?.slice(-10) || "—"}
-                  </p>
+        {/* ═══ Widget 3: Poslední aktivity ═══ */}
+        <div className="glass-panel p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-white">Poslední aktivity</h3>
+            <button className="text-[10px] text-blue-400 font-medium hover:text-blue-300 transition-colors">
+              Zobrazit vše
+            </button>
+          </div>
+          <div className="space-y-3">
+            {recentActivities.slice(0, 5).map((activity, idx) => {
+              const config = actionConfig[activity.action] || { label: activity.action, icon: Eye, color: "text-slate-400", dotColor: "bg-slate-500" }
+              return (
+                <div key={activity.id || idx} className="flex items-start gap-2.5">
+                  <div className={`activity-dot ${config.dotColor} mt-1.5 shrink-0`}></div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-semibold ${config.color} leading-tight`}>{config.label}</p>
+                    <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
+                      HU:{activity.hu_number?.slice(-10) || "—"}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-600 whitespace-nowrap shrink-0">
+                    {getRelativeTime(activity.created_at)}
+                  </span>
                 </div>
-                <span className="text-[10px] text-slate-600 whitespace-nowrap shrink-0">
-                  {getRelativeTime(activity.created_at)}
-                </span>
-              </div>
-            )
-          })}
-          
-          {recentActivities.length === 0 && (
-            <p className="text-xs text-slate-600 text-center py-4">Žádné aktivity</p>
-          )}
+              )
+            })}
+            
+            {recentActivities.length === 0 && (
+              <p className="text-xs text-slate-600 text-center py-4">Žádné aktivity</p>
+            )}
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* Block Detail Drawer */}
+      <BlockDetailDrawer 
+        block={selectedBlock} 
+        onClose={() => setSelectedBlock(null)}
+        onFilterBlock={onFilterBlock}
+      />
+    </>
   )
 }
