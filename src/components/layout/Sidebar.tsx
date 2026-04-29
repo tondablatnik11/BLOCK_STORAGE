@@ -8,7 +8,7 @@ import {
   ScrollText, GitBranch, FileDown,
   BarChart3, FileBarChart, TrendingUp,
   Settings, ChevronDown, Box, CheckCircle2,
-  ClipboardCheck, ClipboardList, HelpCircle
+  ClipboardCheck, ClipboardList, HelpCircle, Users
 } from "lucide-react"
 import { useState } from "react"
 
@@ -73,6 +73,12 @@ const navSections: NavSection[] = [
     category: "PODPORA",
     items: [
       { name: "Nápověda", href: "/help", icon: HelpCircle },
+    ]
+  },
+  {
+    category: "ADMIN",
+    items: [
+      { name: "Správa uživatelů", href: "/admin/users", icon: Users },
     ]
   }
 ]
