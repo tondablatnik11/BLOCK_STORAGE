@@ -7,14 +7,27 @@ import { Box, LogIn, UserPlus, Eye, EyeOff, Loader2, AlertTriangle } from "lucid
 
 type Mode = 'login' | 'register'
 
+// Převod jména na interní email: "Jan Novák" → "jan.novak@blockstorage.app"
+function nameToEmail(name: string): string {
+  const sanitized = name
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // odstranění diakritiky
+    .replace(/[^a-z0-9\s]/g, '')     // jen alfanumerické + mezery
+    .replace(/\s+/g, '.')            // mezery → tečky
+    .replace(/\.+/g, '.')            // duplicitní tečky
+    .replace(/^\.+|\.+$/g, '')       // trim teček
+  return `${sanitized || 'user'}@blockstorage.app`
+}
+
 export default function LoginPage() {
   const { signIn, signUp, loading } = useAuth()
   const router = useRouter()
 
   const [mode, setMode] = useState<Mode>('login')
-  const [email, setEmail] = useState("")
+  const [name, setName] = useState("")
   const [password, setPassword] = useState("")
-  const [fullName, setFullName] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -25,13 +38,13 @@ export default function LoginPage() {
     setError(null)
     setSuccess(null)
 
-    if (!email.trim() || !password.trim()) {
-      setError("Vyplňte email a heslo.")
+    if (!name.trim()) {
+      setError("Vyplňte jméno.")
       return
     }
 
-    if (mode === 'register' && !fullName.trim()) {
-      setError("Vyplňte jméno.")
+    if (!password.trim()) {
+      setError("Vyplňte heslo.")
       return
     }
 
@@ -41,6 +54,7 @@ export default function LoginPage() {
     }
 
     setSubmitting(true)
+    const email = nameToEmail(name)
 
     if (mode === 'login') {
       const res = await signIn(email, password)
@@ -48,15 +62,19 @@ export default function LoginPage() {
         router.push('/')
         router.refresh()
       } else {
-        setError(res.error || "Přihlášení selhalo.")
+        setError("Neplatné jméno nebo heslo.")
       }
     } else {
-      const res = await signUp(email, password, fullName)
+      const res = await signUp(email, password, name.trim())
       if (res.success) {
-        setSuccess("Registrace úspěšná! Zkontrolujte email pro potvrzení účtu.")
+        setSuccess("Registrace úspěšná! Nyní se přihlaste.")
         setMode('login')
       } else {
-        setError(res.error || "Registrace selhala.")
+        if (res.error?.includes('already') || res.error?.includes('duplicate')) {
+          setError("Toto jméno je již obsazeno. Zvolte jiné.")
+        } else {
+          setError(res.error || "Registrace selhala.")
+        }
       }
     }
 
@@ -73,7 +91,7 @@ export default function LoginPage() {
 
   return (
     <div className="fixed inset-0 bg-[#050a18] flex items-center justify-center z-[100]">
-      {/* Background grid effect */}
+      {/* Background grid */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(100,150,255,0.3) 1px, transparent 0)',
         backgroundSize: '40px 40px'
@@ -121,33 +139,19 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Full name (register only) */}
-            {mode === 'register' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Jméno a příjmení *</label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jan Novák"
-                  className="glass-input"
-                  required
-                  autoFocus
-                />
-              </div>
-            )}
-
-            {/* Email */}
+            {/* Name */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email *</label>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                {mode === 'register' ? 'Jméno a příjmení *' : 'Jméno *'}
+              </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="uzivatel@firma.cz"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={mode === 'register' ? 'Jan Novák' : 'Zadejte své jméno'}
                 className="glass-input"
                 required
-                autoFocus={mode === 'login'}
+                autoFocus
               />
             </div>
 
@@ -208,7 +212,8 @@ export default function LoginPage() {
             {/* Info */}
             {mode === 'register' && (
               <p className="text-[10px] text-slate-600 text-center leading-relaxed">
-                Po registraci bude automaticky přiřazen unikátní UIH kód. Role bude nastavena administrátorem.
+                Po registraci bude automaticky přiřazen unikátní UIH kód.
+                <br />Stačí zadat jméno a heslo — žádný email není potřeba.
               </p>
             )}
           </form>
