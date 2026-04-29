@@ -34,12 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabaseBrowser
+  const fetchProfile = async (authUser: User) => {
+    const { data, error } = await supabaseBrowser
       .from('user_profiles')
       .select('*')
-      .eq('auth_id', userId)
-      .single()
+      .eq('auth_id', authUser.id)
+      .maybeSingle()
 
     if (data) {
       setProfile(data as UserProfile)
@@ -48,7 +48,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabaseBrowser
         .from('user_profiles')
         .update({ last_login_at: new Date().toISOString() })
-        .eq('auth_id', userId)
+        .eq('auth_id', authUser.id)
+    } else {
+      // Trigger pravděpodobně selhal — vytvoříme profil ručně
+      const meta = authUser.user_metadata || {}
+      const customUih = meta.custom_uih || ''
+      const fullName = meta.full_name || authUser.email?.split('@')[0] || 'User'
+      
+      // Počkat krátce, trigger mohl ještě nedoběhnout
+      await new Promise(r => setTimeout(r, 1000))
+      
+      // Zkusit znovu
+      const { data: retryData } = await supabaseBrowser
+        .from('user_profiles')
+        .select('*')
+        .eq('auth_id', authUser.id)
+        .maybeSingle()
+      
+      if (retryData) {
+        setProfile(retryData as UserProfile)
+      } else {
+        // Stále neexistuje — vytvořit fallback profil
+        const fallbackProfile: UserProfile = {
+          id: '',
+          auth_id: authUser.id,
+          email: authUser.email || '',
+          uih: customUih || 'N/A',
+          full_name: fullName,
+          role: 'warehouse_user',
+          is_active: true,
+          last_login_at: null,
+        }
+        setProfile(fallbackProfile)
+        console.warn('User profile not found in DB, using fallback. Run 004_user_profiles.sql migration.')
+      }
     }
   }
 
@@ -58,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfile(session.user.id)
+        fetchProfile(session.user)
       }
       setLoading(false)
     })
@@ -68,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfile(session.user.id)
+        fetchProfile(session.user)
       } else {
         setProfile(null)
       }
@@ -105,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id)
+    if (user) await fetchProfile(user)
   }
 
   return (
