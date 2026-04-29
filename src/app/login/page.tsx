@@ -7,18 +7,9 @@ import { Box, LogIn, UserPlus, Eye, EyeOff, Loader2, AlertTriangle } from "lucid
 
 type Mode = 'login' | 'register'
 
-// Převod jména na interní email: "Jan Novák" → "jan.novak@blockstorage.app"
-function nameToEmail(name: string): string {
-  const sanitized = name
-    .toLowerCase()
-    .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // odstranění diakritiky
-    .replace(/[^a-z0-9\s]/g, '')     // jen alfanumerické + mezery
-    .replace(/\s+/g, '.')            // mezery → tečky
-    .replace(/\.+/g, '.')            // duplicitní tečky
-    .replace(/^\.+|\.+$/g, '')       // trim teček
-  return `${sanitized || 'user'}@blockstorage.app`
+// Generování interního emailu z UIH: "UIH001" → "uih001@blockstorage.app"
+function uihToEmail(uih: string): string {
+  return `${uih.toLowerCase().trim()}@blockstorage.app`
 }
 
 export default function LoginPage() {
@@ -26,8 +17,9 @@ export default function LoginPage() {
   const router = useRouter()
 
   const [mode, setMode] = useState<Mode>('login')
-  const [name, setName] = useState("")
-  const [uih, setUih] = useState("")
+  const [loginUih, setLoginUih] = useState("")
+  const [regName, setRegName] = useState("")
+  const [regUih, setRegUih] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,45 +31,47 @@ export default function LoginPage() {
     setError(null)
     setSuccess(null)
 
-    if (!name.trim()) {
-      setError("Vyplňte jméno.")
-      return
-    }
-
-    if (!password.trim()) {
-      setError("Vyplňte heslo.")
-      return
-    }
-
-    if (password.length < 6) {
+    if (!password.trim() || password.length < 6) {
       setError("Heslo musí mít alespoň 6 znaků.")
       return
     }
 
-    if (mode === 'register' && !uih.trim()) {
-      setError("Vyplňte vaše UIH (z SAPu).")
-      return
-    }
-
     setSubmitting(true)
-    const email = nameToEmail(name)
 
     if (mode === 'login') {
+      if (!loginUih.trim()) {
+        setError("Vyplňte vaše UIH.")
+        setSubmitting(false)
+        return
+      }
+      const email = uihToEmail(loginUih)
       const res = await signIn(email, password)
       if (res.success) {
         router.push('/')
         router.refresh()
       } else {
-        setError("Neplatné jméno nebo heslo.")
+        setError("Neplatné UIH nebo heslo.")
       }
     } else {
-      const res = await signUp(email, password, name.trim(), uih.trim().toUpperCase())
+      if (!regName.trim()) {
+        setError("Vyplňte jméno.")
+        setSubmitting(false)
+        return
+      }
+      if (!regUih.trim()) {
+        setError("Vyplňte vaše UIH.")
+        setSubmitting(false)
+        return
+      }
+      const email = uihToEmail(regUih)
+      const res = await signUp(email, password, regName.trim(), regUih.trim().toUpperCase())
       if (res.success) {
-        setSuccess("Registrace úspěšná! Nyní se přihlaste.")
+        setSuccess("Registrace úspěšná! Nyní se přihlaste pomocí UIH a hesla.")
         setMode('login')
+        setLoginUih(regUih)
       } else {
         if (res.error?.includes('already') || res.error?.includes('duplicate')) {
-          setError("Toto jméno je již obsazeno. Zvolte jiné.")
+          setError("Toto UIH je již registrováno.")
         } else {
           setError(res.error || "Registrace selhala.")
         }
@@ -145,36 +139,52 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Name */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                {mode === 'register' ? 'Jméno a příjmení *' : 'Jméno *'}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={mode === 'register' ? 'Jan Novák' : 'Zadejte své jméno'}
-                className="glass-input"
-                required
-                autoFocus
-              />
-            </div>
 
-            {/* UIH (register only) */}
-            {mode === 'register' && (
+            {/* === LOGIN MODE === */}
+            {mode === 'login' && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vaše UIH (z SAPu) *</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vaše UIH *</label>
                 <input
                   type="text"
-                  value={uih}
-                  onChange={(e) => setUih(e.target.value.toUpperCase())}
+                  value={loginUih}
+                  onChange={(e) => setLoginUih(e.target.value.toUpperCase())}
                   placeholder="Např. UIH001"
-                  className="glass-input uppercase font-mono"
+                  className="glass-input uppercase font-mono text-lg tracking-wider"
                   required
+                  autoFocus
                 />
-                <p className="text-[10px] text-slate-600">Zadejte stejné UIH, které používáte v SAPu.</p>
               </div>
+            )}
+
+            {/* === REGISTER MODE === */}
+            {mode === 'register' && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Jméno a příjmení *</label>
+                  <input
+                    type="text"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="Jan Novák"
+                    className="glass-input"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vaše UIH (z SAPu) *</label>
+                  <input
+                    type="text"
+                    value={regUih}
+                    onChange={(e) => setRegUih(e.target.value.toUpperCase())}
+                    placeholder="Např. UIH001"
+                    className="glass-input uppercase font-mono"
+                    required
+                  />
+                  <p className="text-[10px] text-slate-600">Zadejte stejné UIH, které používáte v SAPu.</p>
+                </div>
+              </>
             )}
 
             {/* Password */}
@@ -234,7 +244,8 @@ export default function LoginPage() {
             {/* Info */}
             {mode === 'register' && (
               <p className="text-[10px] text-slate-600 text-center leading-relaxed">
-                Stačí zadat jméno, vaše UIH a heslo — žádný email není potřeba.
+                Zadejte své jméno, UIH z SAPu a zvolte heslo.
+                <br />Pro přihlášení pak stačí UIH + heslo.
               </p>
             )}
           </form>
