@@ -1,10 +1,9 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import Sidebar from "../components/layout/Sidebar"
-import Topbar from "../components/layout/Topbar"
 import { Toaster } from "sonner"
 import Providers from "./providers"
+import LayoutShell from "./LayoutShell"
 
 const inter = Inter({ subsets: ["latin", "latin-ext"] })
 
@@ -22,23 +21,10 @@ export default function RootLayout({
     <html lang="cs" className="dark">
       <body className={`${inter.className} min-h-screen flex bg-[#050a18] text-slate-100 antialiased`}>
         <Providers>
-        
-        {/* Levý pevný navigační panel */}
-        <Sidebar />
-
-        {/* Hlavní obsahová část, odsazená o šířku sidebaru (pl-60 = 240px) */}
-        <div className="flex-1 flex flex-col pl-60 min-h-screen">
-          
-          {/* Pevná horní lišta */}
-          <Topbar />
-          
-          {/* Prostor pro samotnou stránku */}
-          <main className="flex-1 w-full p-6">
+          <LayoutShell>
             {children}
-          </main>
-        </div>
-        
-        <Toaster theme="dark" position="bottom-right" richColors closeButton />
+          </LayoutShell>
+          <Toaster theme="dark" position="bottom-right" richColors closeButton />
         </Providers>
       </body>
     </html>

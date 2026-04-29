@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Search, Settings } from "lucide-react"
 import SettingsDrawer from "../settings/SettingsDrawer"
+import UserMenu from "../auth/UserMenu"
 
 export default function Topbar() {
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -47,15 +48,7 @@ export default function Topbar() {
           
           <div className="h-7 w-px bg-white/[0.08] mx-1"></div>
           
-          <div className="flex items-center gap-2.5 cursor-pointer hover:bg-white/[0.04] py-1.5 px-2 rounded-lg transition-all">
-            <div className="flex flex-col text-right">
-              <span className="text-xs font-bold text-slate-200 leading-none">Skladník</span>
-              <span className="text-[10px] text-slate-500 font-medium mt-0.5">Admin</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shadow-[0_0_8px_rgba(16,185,129,0.1)]">
-              S
-            </div>
-          </div>
+          <UserMenu />
         </div>
       </header>
 
