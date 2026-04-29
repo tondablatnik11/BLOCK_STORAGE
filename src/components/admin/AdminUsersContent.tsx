@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Users, Shield, ShieldCheck, Eye, UserCheck, UserX, RefreshCw } from "lucide-react"
-import { UserProfileRow, updateUserRole, toggleUserActive, getAllUsers } from "../../actions/users"
 import { useAuth } from "../../contexts/AuthContext"
 import { toast } from "sonner"
 
@@ -28,6 +27,22 @@ const roleIcons: Record<string, any> = {
   readonly: Eye,
 }
 
+import { supabaseBrowser } from "../../lib/supabase-browser"
+import { useEffect } from "react"
+
+export interface UserProfileRow {
+  id: string
+  auth_id: string
+  email: string
+  uih: string
+  full_name: string | null
+  role: 'admin' | 'warehouse_user' | 'readonly'
+  is_active: boolean
+  last_login_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export default function AdminUsersContent({ initialUsers }: Props) {
   const { profile } = useAuth()
   const [users, setUsers] = useState<UserProfileRow[]>(initialUsers)
@@ -35,34 +50,52 @@ export default function AdminUsersContent({ initialUsers }: Props) {
 
   const isAdmin = profile?.role === 'admin'
 
+  const handleRefresh = async () => {
+    setLoading('refresh')
+    const { data } = await supabaseBrowser
+      .from('user_profiles')
+      .select('*')
+      .order('created_at', { ascending: true })
+    if (data) setUsers(data as UserProfileRow[])
+    setLoading(null)
+  }
+
+  // Load users on mount if initial array is empty (which happens due to server action RLS)
+  useEffect(() => {
+    if (isAdmin && users.length === 0) {
+      handleRefresh()
+    }
+  }, [isAdmin])
+
   const handleRoleChange = async (userId: string, newRole: 'admin' | 'warehouse_user' | 'readonly') => {
     setLoading(userId)
-    const res = await updateUserRole(userId, newRole)
-    if (res.success) {
-      toast.success(res.message)
+    const { error } = await supabaseBrowser
+      .from('user_profiles')
+      .update({ role: newRole, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+
+    if (!error) {
+      toast.success(`Role změněna na ${roleLabels[newRole]}`)
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
     } else {
-      toast.error(res.error || 'Chyba')
+      toast.error('Chyba: Nedostatečná práva (zkontrolujte RLS v Supabase)')
     }
     setLoading(null)
   }
 
   const handleToggleActive = async (userId: string, currentActive: boolean) => {
     setLoading(userId)
-    const res = await toggleUserActive(userId, !currentActive)
-    if (res.success) {
-      toast.success(res.message)
+    const { error } = await supabaseBrowser
+      .from('user_profiles')
+      .update({ is_active: !currentActive, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+
+    if (!error) {
+      toast.success(!currentActive ? 'Uživatel aktivován' : 'Uživatel deaktivován')
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !currentActive } : u))
     } else {
-      toast.error(res.error || 'Chyba')
+      toast.error('Chyba: Nedostatečná práva (zkontrolujte RLS v Supabase)')
     }
-    setLoading(null)
-  }
-
-  const handleRefresh = async () => {
-    setLoading('refresh')
-    const data = await getAllUsers()
-    setUsers(data)
     setLoading(null)
   }
 
